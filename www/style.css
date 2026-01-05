@@ -1,0 +1,5768 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css');
+
+* {
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: #0A0E14;
+  color: #E8E9ED;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Background gradient for the entire page */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, 
+      rgba(0, 168, 232, 0.15) 0%, 
+      transparent 40%),
+    radial-gradient(circle at 80% 20%, 
+      rgba(123, 104, 238, 0.15) 0%, 
+      transparent 40%),
+    radial-gradient(circle at 50% 50%, 
+      rgba(15, 20, 25, 0.8) 0%, 
+      transparent 60%);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Base navigation styles */
+.modern-nav {
+  padding: 1rem 3rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  height: 70px;
+  min-height: 70px;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  margin-right: calc(-50vw + 50%);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+/* NO SCROLLING STATE - TRUE iOS Liquid Glass Design (with subtle buttons) */
+.modern-nav.no-scroll {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 25, 35, 0.72) 0%,
+    rgba(15, 20, 28, 0.65) 50%,
+    rgba(10, 15, 23, 0.75) 100%
+  );
+  backdrop-filter: blur(80px) saturate(180%) contrast(120%) brightness(105%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%) contrast(120%) brightness(105%);
+  box-shadow: 
+    0 10px 40px -5px rgba(0, 0, 0, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* Liquid glass flowing effect (only when not scrolling) */
+.modern-nav.no-scroll::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at center,
+    rgba(0, 168, 232, 0.15) 0%,
+    rgba(123, 104, 238, 0.1) 25%,
+    transparent 50%
+  );
+  animation: liquidFlow 15s ease-in-out infinite;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  opacity: 1;
+}
+
+/* Liquid glass surface shimmer (only when not scrolling) */
+.modern-nav.no-scroll::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 200%;
+  height: 100%;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.15) 40%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.15) 60%,
+    transparent 80%
+  );
+  animation: liquidShimmer 6s ease-in-out infinite;
+  pointer-events: none;
+  opacity: 1;
+}
+
+@keyframes liquidFlow {
+  0%, 100% {
+    transform: translate(0%, 0%) rotate(0deg) scale(1);
+  }
+  33% {
+    transform: translate(20%, -10%) rotate(120deg) scale(1.1);
+  }
+  66% {
+    transform: translate(-20%, 10%) rotate(240deg) scale(0.95);
+  }
+}
+
+@keyframes liquidShimmer {
+  0% {
+    left: -100%;
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+/* DURING SCROLLING STATE - Simplified design (with blue glass buttons) */
+.modern-nav.scrolling {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.03) 50%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(8px) saturate(180%) brightness(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(180%) brightness(1.2);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+/* Hide animations during scrolling */
+.modern-nav.scrolling::before,
+.modern-nav.scrolling::after {
+  opacity: 0;
+  animation: none;
+}
+
+/* Default state (when JavaScript hasn't loaded yet) */
+.modern-nav:not(.no-scroll):not(.scrolling) {
+  background: linear-gradient(
+    180deg,
+    rgba(20, 25, 35, 0.72) 0%,
+    rgba(15, 20, 28, 0.65) 50%,
+    rgba(10, 15, 23, 0.75) 100%
+  );
+  backdrop-filter: blur(80px) saturate(180%) contrast(120%) brightness(105%);
+  -webkit-backdrop-filter: blur(80px) saturate(180%) contrast(120%) brightness(105%);
+}
+
+/* Navigation content styles */
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 20px;
+  font-weight: 800;
+  color: #FFF;
+  height: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.nav-brand img {
+  height: 40px;
+  width: auto;
+  display: block;
+}
+
+.nav-menu {
+  display: flex;
+  gap: 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+/* REVERSED: NO SCROLL STATE - Subtle Glass Buttons */
+.modern-nav.no-scroll .nav-btn {
+  padding: 0.6rem 1.2rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #9BA3B0;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 2;
+  text-decoration: none !important;
+}
+
+.modern-nav.no-scroll .nav-btn:hover, 
+.modern-nav.no-scroll .nav-btn.active {
+  color: #00A8E8;
+  background: rgba(0, 168, 232, 0.2);
+  border-color: rgba(0, 168, 232, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 168, 232, 0.2);
+  text-decoration: none !important;
+}
+
+/* REVERSED: NO SCROLL STATE - Subtle Glass Icons */
+.modern-nav.no-scroll .nav-icon {
+  color: #9BA3B0;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.modern-nav.no-scroll .nav-icon:hover {
+  color: #00A8E8;
+  background: rgba(0, 168, 232, 0.15);
+  transform: translateY(-2px);
+  border-color: rgba(0, 168, 232, 0.3);
+  box-shadow: 0 5px 15px rgba(0, 168, 232, 0.2);
+}
+
+/* REVERSED: SCROLLING STATE - Blue Glass Buttons */
+.modern-nav.scrolling .nav-btn {
+  padding: 0.6rem 1.2rem;
+  background: rgba(0, 168, 232, 0.2);
+  border: 1px solid rgba(0, 168, 232, 0.3);
+  border-radius: 12px;
+  color: #FFFFFF;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  position: relative;
+  z-index: 2;
+  text-decoration: none !important;
+}
+
+.modern-nav.scrolling .nav-btn:hover, 
+.modern-nav.scrolling .nav-btn.active {
+  color: #FFFFFF;
+  background: #00A8E8;
+  border-color: rgba(0, 168, 232, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 168, 232, 0.2);
+  text-decoration: none !important;
+}
+
+/* REVERSED: SCROLLING STATE - Blue Glass Icons */
+.modern-nav.scrolling .nav-icon {
+  color: #FFFFFF;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(0, 168, 232, 0.2);
+  border: 1px solid rgba(0, 168, 232, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  text-decoration: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.modern-nav.scrolling .nav-icon:hover {
+  color: #FFFFFF;
+  background: #00A8E8;
+  border-color: rgba(0, 168, 232, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 168, 232, 0.2);
+}
+
+/* Default state for nav-icons (when JavaScript hasn't loaded) */
+.nav-icons {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  position: relative;
+  z-index: 2;
+}
+
+/* ==============================================================================
+   HERO SECTION WITH ANIMATED LOGO - FULL VIEWPORT HEIGHT
+   ============================================================================== */
+
+.hero {
+  text-align: center;
+  padding: 0;
+  background: rgba(5, 8, 12, 0.85);
+  backdrop-filter: blur(60px) saturate(200%);
+  box-shadow: 0 30px 100px rgba(0, 0, 0, 0.7);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  position: relative;
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+}
+
+/* Remove any default body margins when on landing page */
+body:has(.hero) {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* Adjust hero content spacing for full-screen layout */
+.hero .logo-animation-container {
+  margin-bottom: 0;
+  padding: 0;
+}
+
+.hero-subtitle {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.hero-title {
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 0;
+}
+
+.hero-button {
+  margin-top: 2rem;
+  margin-bottom: 0;
+}
+
+/* Enhanced glassmorphism background layers */
+.hero::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 20% 80%, rgba(0, 168, 232, 0.15) 0%, transparent 40%),
+    radial-gradient(circle at 80% 20%, rgba(123, 104, 238, 0.15) 0%, transparent 40%),
+    linear-gradient(135deg, rgba(0, 0, 0, 0.4) 0%, transparent 40%, rgba(0, 0, 0, 0.5) 100%);
+  pointer-events: none;
+  z-index: 0;
+  animation: cinematicGlow 8s ease-in-out infinite;
+}
+
+/* Enhanced noise texture for glass effect */
+.hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('data:image/svg+xml,%3Csvg viewBox=\'0 0 250 250\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noiseFilter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.85\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noiseFilter)\' opacity=\'0.15\'/%3E%3C/svg%3E');
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: overlay;
+}
+
+/* Strong animated border effect */
+.hero-border {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid transparent;
+  border-radius: 0 0 40px 40px;
+  background: linear-gradient(135deg, 
+    rgba(0, 168, 232, 0.4), 
+    rgba(123, 104, 238, 0.4), 
+    rgba(0, 168, 232, 0.4)) border-box;
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) padding-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 0;
+  animation: borderGlow 3s ease-in-out infinite;
+}
+
+@keyframes cinematicGlow {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.01);
+  }
+}
+
+/* Enhanced pulse animation for the top border */
+.pulse-border {
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(0, 168, 232, 0.8) 20%, 
+    rgba(0, 168, 232, 1) 50%, 
+    rgba(0, 168, 232, 0.8) 80%, 
+    transparent 100%);
+  z-index: 1;
+  animation: pulse 2s ease-in-out infinite;
+  filter: blur(0.5px);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scaleX(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* Logo Animation Container - Enhanced */
+.logo-animation-container {
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  position: relative;
+  perspective: 1000px;
+  padding: 0rem 0rem 2rem;
+  z-index: 2;
+}
+
+.logo-flip-container {
+  position: relative;
+  width: 320px;
+  height: 140px;
+  transform-style: preserve-3d;
+  transition: transform 5.0s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  z-index: 2;
+}
+
+.logo-front, .logo-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-front {
+  z-index: 3;
+}
+
+.logo-back {
+  transform: rotateY(180deg);
+}
+
+/* Original image sizes with enhanced effects */
+.logo-original {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.4));
+}
+
+/* Specific sizing for each logo based on original dimensions */
+.logo-front img {
+  width: 140px;
+  height: 140px;
+}
+
+.logo-back img {
+  width: 320px;
+  height: 120px;
+}
+
+/* CSS-only animation as fallback */
+@keyframes flipLogo {
+  0%, 45% {
+    transform: rotateY(0deg);
+  }
+  50%, 95% {
+    transform: rotateY(180deg);
+  }
+  100% {
+    transform: rotateY(360deg);
+  }
+}
+
+.flip-animation {
+  animation: flipLogo 4s ease-in-out infinite;
+}
+
+.hero-title {
+  font-size: 48px;
+  font-weight: 800;
+  color: #FFFFFF;
+  position: relative;
+  z-index: 2;
+  padding: 2rem 0rem 2rem;
+  text-shadow: 
+    0 2px 10px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(0, 168, 232, 0.3);
+}
+
+.hero-title .gradient-word {
+  background: linear-gradient(135deg, #00A8E8 0%, #7B68EE 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+}
+
+.hero-subtitle {
+  font-size: 18px;
+  color: #FFFFFF;
+  position: relative;
+  z-index: 2;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  opacity: 0.9;
+}
+
+/* Enhanced Modern Gradient Button */
+.hero-button {
+  padding: .8rem 2.5rem;
+  background: linear-gradient(135deg, 
+    rgba(0, 168, 232, 0.8) 0%, 
+    rgba(123, 104, 238, 0.8) 100%);
+  border: none;
+  border-radius: 30px;
+  color: #FFF;
+  font-family: 'Inter', sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  z-index: 2;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 
+    0 10px 40px rgba(0, 168, 232, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.hero-button:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 
+    0 10px 30px rgba(0, 168, 232, 0.3),   /* Inner glow layer */
+    0 15px 40px rgba(0, 168, 232, 0.15),  /* Outer glow layer */
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, 
+    rgba(0, 168, 232, 1) 0%, 
+    rgba(123, 104, 238, 1) 100%);
+}
+
+.hero-button:active {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 8px 30px rgba(0, 168, 232, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ==============================================================================
+   MODERN STAT CARDS - Enhanced Glassmorphism
+   ============================================================================== */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  padding: 0 3rem 1rem;
+  max-width: 1400px;
+  margin: 0 auto 1rem;
+}
+
+.stat-card {
+  background: rgba(26, 31, 41, 0.6);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  text-align: center;
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.05) 0%, 
+    transparent 50%,
+    rgba(0, 0, 0, 0.1) 100%);
+  border-radius: 24px;
+  pointer-events: none;
+}
+
+.stat-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  border-color: rgba(0, 168, 232, 0.4);
+  box-shadow: 
+    0 10px 20px rgba(0, 168, 232, 0.15),  /* Very subtle glow */
+    0 5px 10px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.stat-icon {
+  width: 70px;
+  height: 70px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 8px 20px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.stat-card:nth-child(1) .stat-icon {
+  background: rgba(0, 168, 232, 0.2);
+  border-color: rgba(0, 168, 232, 0.3);
+}
+
+.stat-card:nth-child(2) .stat-icon {
+  background: rgba(123, 104, 238, 0.2);
+  border-color: rgba(123, 104, 238, 0.3);
+}
+
+.stat-card:nth-child(3) .stat-icon {
+  background: rgba(6, 214, 160, 0.2);
+  border-color: rgba(6, 214, 160, 0.3);
+}
+
+.stat-card:nth-child(4) .stat-icon {
+  background: rgba(255, 203, 71, 0.2);
+  border-color: rgba(255, 203, 71, 0.3);
+}
+
+.stat-card:nth-child(5) .stat-icon {
+  background: rgba(239, 71, 111, 0.2);
+  border-color: rgba(239, 71, 111, 0.3);
+}
+
+.stat-card:nth-child(6) .stat-icon {
+  background: rgba(155, 163, 176, 0.2);
+  border-color: rgba(155, 163, 176, 0.3);
+}
+
+.stat-content {
+  flex: 1;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-content h4 {
+  font-size: 14px;
+  color: #C0C5CE;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  width: 100%;
+  text-align: center;
+  opacity: 0.9;
+}
+
+.stat-content p {
+  font-size: 36px;
+  font-weight: 800;
+  color: #FFF;
+  margin: 0;
+  background: linear-gradient(135deg, #FFF 0%, #9BA3B0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  text-align: center;
+}
+
+.form-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-group.half {
+  flex: 1;
+  min-width: 0; /* Prevent flex items from overflowing */
+}
+
+.form-group.full-width {
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+/* Ensure form groups with half width have proper spacing */
+.modal-body .form-group.half {
+  margin-bottom: 0;
+}
+
+/* Adjust modal width to prevent horizontal scroll */
+.modal-box {
+  max-width: 700px; /* Increased slightly to accommodate new layout */
+  width: 95%;
+}
+
+/* Ensure textareas and inputs fill their containers */
+.form-group.full-width textarea,
+.form-group.full-width input[type='text'] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Adjust modal body padding for better spacing */
+.modal-body {
+  padding: 2rem;
+  max-height: 85vh; /* Increased to accommodate more fields */
+  overflow-y: auto;
+}
+
+/* Ensure selectize inputs don't overflow */
+.selectize-control {
+  width: 100% !important;
+}
+
+.selectize-input {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Adjust star rating to fit in half width */
+.star-rating-input {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding-top: 0.5rem;
+}
+
+/* Ensure numeric input doesn't overflow */
+input[type='number'] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Full width form group adjustments */
+.form-group.full-width {
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+/* Ensure full-width inputs fill their containers */
+.form-group.full-width textarea,
+.form-group.full-width input[type='text'],
+.form-group.full-width .selectize-control {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Adjust modal width to prevent horizontal scroll */
+.modal-box {
+  max-width: 700px;
+  width: 95%;
+}
+
+/* Ensure textareas and inputs fill their containers */
+.form-group.full-width textarea,
+.form-group.full-width input[type='text'] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Adjust modal body padding for better spacing */
+.modal-body {
+  padding: 2rem;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+/* Ensure selectize inputs don't overflow */
+.selectize-control {
+  width: 100% !important;
+}
+
+.selectize-input {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Adjust star rating to fit in full width */
+.star-rating-input {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding-top: 0.5rem;
+}
+
+/* Ensure numeric input doesn't overflow */
+input[type='number'] {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Form row styling */
+.form-row {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-group.half {
+  flex: 1;
+  min-width: 0; /* Prevent flex items from overflowing */
+}
+
+/* Remove bottom margin for half-width groups in rows */
+.form-row .form-group.half {
+  margin-bottom: 0;
+}
+
+/* Star rating hover effects */
+.star.hover {
+  color: #FFB800;
+  text-shadow: 0 0 10px rgba(255, 184, 0, 0.5);
+}
+
+/* Ensure star rating is properly spaced */
+.star-rating-input {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  padding-top: 0.5rem;
+}
+
+.star {
+  font-size: 28px;
+  color: rgba(155, 163, 176, 0.4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.star.filled {
+  color: #FFB800;
+  text-shadow: 0 0 20px rgba(255, 184, 0, 0.5);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .form-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .form-group.half {
+    width: 100%;
+  }
+  
+  .modal-body {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .stat-card {
+    padding: 1.5rem;
+  }
+  
+  .stat-icon {
+    width: 60px;
+    height: 60px;
+    font-size: 28px;
+  }
+  
+  .stat-content p {
+    font-size: 32px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .hero-title {
+    font-size: 36px;
+  }
+  
+  .logo-flip-container {
+    width: 280px;
+    height: 120px;
+  }
+  
+  .logo-front img {
+    width: 120px;
+    height: 120px;
+  }
+  
+  .logo-back img {
+    width: 280px;
+    height: 100px;
+  }
+  
+  .hero-button {
+    padding: 0.8rem 2rem;
+    font-size: 16px;
+  }
+  
+  .hero {
+    padding: 6rem 2rem 8rem;
+  }
+}
+
+/* ==============================================================================
+   MOVIE CARDS - ENHANCED GLASSMORPHISM WITH FIXED HOVER CLIPPING
+   ============================================================================== */
+
+.movies-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2.5rem;
+  padding: 0 3rem 3rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.movie-card {
+  background: rgba(26, 31, 41, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  overflow: visible;
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transform-origin: center center;
+  margin-top: -2px;
+  margin-bottom: 12px;
+}
+
+.movie-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.03) 0%, 
+    transparent 50%,
+    rgba(0, 0, 0, 0.1) 100%);
+  pointer-events: none;
+  border-radius: 20px;
+}
+
+.movie-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  border-color: rgba(0, 168, 232, 0.3);
+  box-shadow: 
+    0 25px 60px rgba(0, 168, 232, 0.25),
+    0 15px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  z-index: 10;
+}
+
+.movie-poster {
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+  border-radius: 20px 20px 0 0;
+}
+
+.movie-card:hover .movie-poster {
+  transform: scale(1.05);
+}
+
+.badge-watched {
+  background: rgba(6, 214, 160, 0.3);
+  color: #06D6A0;
+  border-color: rgba(6, 214, 160, 0.4);
+}
+
+.badge-watching {
+  background: rgba(255, 203, 71, 0.3);
+  color: #FFCB47;
+  border-color: rgba(255, 203, 71, 0.4);
+}
+
+.badge-unwatched {
+  background: rgba(155, 163, 176, 0.3);
+  color: #9BA3B0;
+  border-color: rgba(155, 163, 176, 0.4);
+}
+
+.movie-badge {
+  position: absolute;
+  top: 25px;
+  right: 15px;
+  padding: 6px 14px;
+  border-radius: 25px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+}
+
+.movie-info {
+  padding: 1.2rem;
+  background: rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1;
+  border-radius: 0 0 20px 20px;
+}
+
+.movie-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #FFF;
+  margin-bottom: 0.6rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  /* Allow text to wrap */
+  display: -webkit-box;
+  -webkit-line-clamp: 2; /* Limit to 2 lines */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+  max-height: 2.6em; /* 2 lines * line-height */
+  word-break: break-word; /* Break long words */
+  hyphens: auto; /* Add hyphens for better word breaking */
+}
+
+.movie-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #9BA3B0;
+  font-size: 14px;
+  margin-bottom: 0.8rem;
+  opacity: 0.9;
+}
+
+.movie-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #FFB800;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+}
+
+.movie-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.8rem;
+}
+
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: #9BA3B0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+.icon-btn:hover {
+  background: rgba(0, 168, 232, 0.3);
+  color: #00A8E8;
+  transform: translateY(-2px);
+  border-color: rgba(0, 168, 232, 0.4);
+}
+
+/* Section Headers - Enhanced */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 3rem 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.section-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: #FFF;
+  background: linear-gradient(135deg, #FFF 0%, #9BA3B0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.view-all {
+  color: #00A8E8;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: rgba(0, 168, 232, 0.1);
+  border: 1px solid rgba(0, 168, 232, 0.2);
+  cursor: pointer !important;
+}
+
+.view-all:hover {
+  color: #7B68EE !important;
+  background: rgba(123, 104, 238, 0.1);
+  border-color: rgba(123, 104, 238, 0.3);
+  transform: translateX(5px) !important;
+}
+
+/* Empty State - Enhanced */
+.empty-state {
+  text-align: center;
+  padding: 6rem 2rem;
+  background: rgba(26, 31, 41, 0.7);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-radius: 30px;
+  max-width: 800px;
+  margin: 3rem auto;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.empty-state h3 {
+  font-size: 28px;
+  color: #FFF;
+  margin-bottom: 1.5rem;
+  font-weight: 800;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.empty-state p {
+  color: #C0C5CE;
+  font-size: 17px;
+  max-width: 500px;
+  margin: 0 auto;
+  line-height: 1.6;
+  opacity: 0.9;
+}
+
+/* Modal - Enhanced Glassmorphism */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1rem;
+}
+
+.modal-box {
+  background: rgba(26, 31, 41, 0.9);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border-radius: 30px;
+  width: 100%;
+  max-width: 600px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 30px 80px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.8rem 2.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.modal-title {
+  font-size: 28px;
+  font-weight: 800;
+  color: #FFF;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  flex: 1;
+  text-align: left;
+}
+
+.modal-close-container {
+  flex-shrink: 0; /* Prevents shrinking */
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: #9BA3B0;
+  font-size: 32px;
+  cursor: pointer;
+  width: 45px;
+  height: 45px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-left: auto; /* Pushes to far right */
+}
+
+.modal-close:hover {
+  background: rgba(239, 71, 111, 0.2);
+  color: #EF476F;
+  transform: rotate(90deg);
+}
+
+.modal-body {
+  padding: 2.5rem;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.form-group {
+  margin-bottom: 2rem;
+}
+
+.form-label {
+  display: block;
+  color: #C0C5CE;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.required {
+  color: #EF476F;
+}
+
+.radio-group {
+  display: flex;
+  gap: 1rem;
+}
+
+.radio-option {
+  flex: 1;
+}
+
+.radio-btn {
+  padding: 1rem 1.2rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 15px;
+  text-align: center;
+  color: #9BA3B0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.radio-btn.selected {
+  background: rgba(0, 168, 232, 0.3);
+  border-color: rgba(0, 168, 232, 0.5);
+  color: #00A8E8;
+  box-shadow: 0 8px 20px rgba(0, 168, 232, 0.2);
+}
+
+.status-group {
+  display: flex;
+  gap: 0.8rem;
+}
+
+.status-btn {
+  flex: 1;
+  padding: 1rem 1.2rem;
+  border-radius: 15px;
+  text-align: center;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.status-watched {
+  background: rgba(6, 214, 160, 0.15);
+  color: rgba(6, 214, 160, 0.9);
+  border-color: rgba(6, 214, 160, 0.3);
+}
+
+.status-watched.selected {
+  background: rgba(6, 214, 160, 0.4);
+  border-color: #06D6A0;
+  color: #06D6A0;
+  box-shadow: 0 8px 20px rgba(6, 214, 160, 0.2);
+}
+
+.status-watching {
+  background: rgba(255, 203, 71, 0.15);
+  color: rgba(255, 203, 71, 0.9);
+  border-color: rgba(255, 203, 71, 0.3);
+}
+
+.status-watching.selected {
+  background: rgba(255, 203, 71, 0.4);
+  border-color: #FFCB47;
+  color: #FFCB47;
+  box-shadow: 0 8px 20px rgba(255, 203, 71, 0.2);
+}
+
+.status-unwatched {
+  background: rgba(155, 163, 176, 0.15);
+  color: rgba(155, 163, 176, 0.9);
+  border-color: rgba(155, 163, 176, 0.3);
+}
+
+.status-unwatched.selected {
+  background: rgba(155, 163, 176, 0.4);
+  border-color: #9BA3B0;
+  color: #9BA3B0;
+  box-shadow: 0 8px 20px rgba(155, 163, 176, 0.2);
+}
+
+.star-rating-input {
+  display: flex;
+  gap: 10px;
+}
+
+.star {
+  font-size: 28px;
+  color: rgba(155, 163, 176, 0.4);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.star.filled {
+  color: #FFB800;
+  text-shadow: 0 0 20px rgba(255, 184, 0, 0.5);
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 1.2rem;
+  background: linear-gradient(135deg, #00A8E8 0%, #7B68EE 100%);
+  border: none;
+  border-radius: 15px;
+  color: #FFF;
+  font-weight: 700;
+  font-size: 17px;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 168, 232, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(0, 168, 232, 0.6);
+}
+
+.btn-secondary {
+  padding: 0.8rem 1.5rem;
+  background: rgba(0, 168, 232, 0.15);
+  border: 1px solid rgba(0, 168, 232, 0.3);
+  border-radius: 12px;
+  color: #00A8E8;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.btn-secondary:hover {
+  background: rgba(0, 168, 232, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 168, 232, 0.2);
+}
+
+/* Enhanced FAB */
+.fab {
+  position: fixed;
+  bottom: 2.5rem;
+  right: 2.5rem;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00A8E8 0%, #7B68EE 100%);
+  border: none;
+  color: #FFF;
+  font-size: 32px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 
+    0 15px 40px rgba(0, 168, 232, 0.5),
+    0 0 30px rgba(0, 168, 232, 0.3);
+  z-index: 1000;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.fab:hover {
+  transform: scale(1.15) rotate(90deg);
+  box-shadow: 
+    0 20px 50px rgba(0, 168, 232, 0.7),
+    0 0 40px rgba(0, 168, 232, 0.4);
+}
+
+/* Enhanced Genre Pills */
+.genre-pills {
+  display: flex;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.genre-pill {
+  background: rgba(0, 168, 232, 0.2);
+  color: #00A8E8;
+  padding: 0.5rem 1rem;
+  border-radius: 25px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid rgba(0, 168, 232, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0, 168, 232, 0.2);
+  transition: all 0.3s ease;
+}
+
+.genre-pill:hover {
+  background: rgba(0, 168, 232, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 168, 232, 0.3);
+}
+
+/* Enhanced Tab Navigation - Updated with pagination active effect */
+.tab-nav {
+  display: flex;
+  gap: 0.8rem;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px;
+  border-radius: 15px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tab-btn {
+  padding: 0.8rem 1.5rem;
+  background: transparent;
+  border: none;
+  color: #9BA3B0;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 15px;
+}
+
+.tab-btn.active {
+  background: rgba(0, 168, 232, 0.3);
+  border-color: rgba(0, 168, 232, 0.5);
+  color: #00A8E8;
+  box-shadow: 0 8px 20px rgba(0, 168, 232, 0.2);
+}
+
+.tab-btn:hover {
+  background: rgba(0, 168, 232, 0.15);
+  color: #00A8E8;
+}
+
+/* Enhanced Chart Container */
+.chart-container {
+  background: rgba(26, 31, 41, 0.7);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-radius: 25px;
+  padding: 2rem;
+  margin: 0 3rem 3rem;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Progress Bar */
+.progress-container {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem !important;
+}
+
+.progress-label {
+  font-size: 13px;
+  color: #9BA3B0;
+  margin-bottom: 6px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.progress-bg {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 20px rgba(0, 168, 232, 0.3);
+}
+
+/* Enhanced Scrollbar */
+::-webkit-scrollbar { 
+  width: 10px; 
+}
+::-webkit-scrollbar-track { 
+  background: rgba(15, 20, 25, 0.5); 
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb { 
+  background: rgba(0, 168, 232, 0.5); 
+  border-radius: 5px; 
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { 
+  background: rgba(0, 168, 232, 0.8); 
+}
+
+/* Selectize Inputs - Keep original design for Media Type, Status, and Genre */
+.selectize-input, .selectize-dropdown {
+  background: rgba(37, 45, 58, 0.9) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(123, 104, 238, 0.4) !important;
+  color: #E8E9ED !important;
+  border-radius: 15px !important;
+}
+
+.selectize-dropdown-content .option:hover {
+  background: rgba(0, 168, 232, 0.3) !important;
+}
+
+/* ==============================================================================
+   MODERN PAGINATION STYLES - ENHANCED DESIGN (Bottom only)
+   ============================================================================== */
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin: 3rem auto;
+  padding: 0 3rem;
+  max-width: 1400px;
+}
+
+.pagination-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  position: relative;
+}
+
+.pagination-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.pagination-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+.pagination-nav-btn {
+  padding: 0.8rem 1.5rem;
+  background: rgba(0, 168, 232, 0.2);
+  border: 1px solid rgba(0, 168, 232, 0.3);
+  border-radius: 12px;
+  color: #00A8E8;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  min-width: 110px;
+  text-align: center;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.pagination-nav-btn:hover:not(:disabled) {
+  background: rgba(0, 168, 232, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 10px 25px rgba(0, 168, 232, 0.3),
+    0 5px 15px rgba(0, 168, 232, 0.2);
+  border-color: rgba(0, 168, 232, 0.5);
+}
+
+.pagination-nav-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 
+    0 5px 15px rgba(0, 168, 232, 0.25),
+    0 2px 8px rgba(0, 168, 232, 0.15);
+}
+
+.pagination-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  background: rgba(155, 163, 176, 0.1);
+  border-color: rgba(155, 163, 176, 0.2);
+  color: rgba(155, 163, 176, 0.5);
+}
+
+.page-info {
+  color: #9BA3B0;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0 1rem;
+  min-width: 120px;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.page-info .current-page {
+  color: #00A8E8;
+  font-weight: 800;
+  font-size: 16px;
+  background: rgba(0, 168, 232, 0.15);
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 168, 232, 0.3);
+}
+
+.page-info .total-pages {
+  color: #7B68EE;
+  font-weight: 700;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0 0.5rem;
+}
+
+.page-number {
+  padding: 0.6rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 10px;
+  color: #9BA3B0;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 600;
+  min-width: 40px;
+  text-align: center;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-number:hover:not(.ellipsis):not(.active) {
+  background: rgba(0, 168, 232, 0.2);
+  color: #00A8E8;
+  transform: translateY(-2px);
+  border-color: rgba(0, 168, 232, 0.4);
+  box-shadow: 0 5px 15px rgba(0, 168, 232, 0.2);
+}
+
+.page-number.active {
+  background: rgba(0, 168, 232, 0.4);
+  color: #00A8E8;
+  border-color: rgba(0, 168, 232, 0.6);
+  box-shadow: 
+    0 8px 25px rgba(0, 168, 232, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.page-number.ellipsis {
+  background: transparent;
+  border: none;
+  cursor: default;
+  min-width: 20px;
+  padding: 0.6rem 0.3rem;
+  color: rgba(155, 163, 176, 0.5);
+}
+
+.page-number.ellipsis:hover {
+  background: transparent;
+  transform: none;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Tab content header */
+.tab-content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 3rem 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.tab-content-info {
+  color: #9BA3B0;
+  font-size: 15px;
+  font-weight: 600;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.tab-content-info .active-tab {
+  color: #00A8E8;
+  font-weight: 700;
+  padding: 4px 12px;
+  background: rgba(0, 168, 232, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(0, 168, 232, 0.2);
+}
+
+.tab-content-info .item-count {
+  color: #7B68EE;
+  font-weight: 700;
+}
+
+/* Page padding for library and recommendations */
+.library-page, .recommendations-page {
+  padding-top: 2rem;
+  padding-bottom: 3rem;
+}
+
+/* ==============================================================================
+   SEARCH, SORT, AND FILTER CONTROLS - MODERN GLASSMORPHISM DESIGN
+   ============================================================================== */
+
+.controls-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 3rem 2rem;
+}
+
+.controls-wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sort-filter-container {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.sort-container, .filter-container {
+  position: relative;
+  z-index: 1000; /* Ensure dropdowns appear on top */
+}
+
+.sort-btn, .filter-btn {
+  padding: 0.8rem 1.2rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: #9BA3B0;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  min-width: 140px;
+}
+
+.sort-btn:hover, .filter-btn:hover {
+  background: rgba(0, 168, 232, 0.15);
+  color: #00A8E8;
+  border-color: rgba(0, 168, 232, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 168, 232, 0.2);
+}
+
+.sort-btn.active, .filter-btn.active {
+  background: rgba(0, 168, 232, 0.25);
+  border-color: rgba(0, 168, 232, 0.4);
+  color: #00A8E8;
+  box-shadow: 0 8px 20px rgba(0, 168, 232, 0.2);
+}
+
+.sort-btn i, .filter-btn i {
+  font-size: 16px;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  left: -200px;
+  margin-top: 0.5rem;
+  background: rgba(37, 45, 58, 0.98);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 15px;
+  padding: 0.8rem;
+  min-width: 350px;
+  z-index: 9999; /* Very high z-index to ensure it's on top */
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: none;
+}
+
+.dropdown-menu.active {
+  display: block;
+}
+
+/* Filter dropdown with scrollable columns */
+.filter-dropdown-content {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.filter-dropdown-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.filter-dropdown-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.filter-dropdown-content::-webkit-scrollbar-thumb {
+  background: rgba(0, 168, 232, 0.5);
+  border-radius: 3px;
+}
+
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.filter-section-title {
+  font-size: 12px;
+  color: #9BA3B0;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item {
+  padding: 0.8rem 1rem;
+  color: #9BA3B0;
+  cursor: pointer;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dropdown-item:hover {
+  background: rgba(0, 168, 232, 0.15);
+  color: #00A8E8;
+}
+
+.dropdown-item.active {
+  background: rgba(0, 168, 232, 0.25);
+  color: #00A8E8;
+  font-weight: 600;
+}
+
+.dropdown-item i {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+
+.search-container {
+  flex: 1;
+  min-width: 300px;
+  position: relative;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  right: 1rem;
+  color: #9BA3B0;
+  font-size: 16px;
+  z-index: 2;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.9rem 2.8rem 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: #FFF;
+  font-size: 15px;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: rgba(0, 168, 232, 0.6);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(0, 168, 232, 0.2);
+}
+
+.clear-filters {
+  padding: 0.8rem 1.2rem;
+  background: rgba(239, 71, 111, 0.1);
+  border: 1px solid rgba(239, 71, 111, 0.2);
+  border-radius: 12px;
+  color: #EF476F;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.clear-filters:hover {
+  background: rgba(239, 71, 111, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(239, 71, 111, 0.2);
+}
+
+/* Filter tags for active filters */
+.filter-tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.filter-tag {
+  padding: 0.4rem 0.8rem;
+  background: rgba(0, 168, 232, 0.15);
+  border: 1px solid rgba(0, 168, 232, 0.3);
+  border-radius: 20px;
+  color: #00A8E8;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.filter-tag .remove {
+  cursor: pointer;
+  padding: 0 0.2rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.filter-tag .remove:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Results info */
+.results-info {
+  color: #9BA3B0;
+  font-size: 14px;
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.results-info strong {
+  color: #00A8E8;
+  font-weight: 700;
+}
+
+/* ==============================================================================
+   TARGETED DARK THEME FOR SPECIFIC INPUT FIELDS ONLY
+   ============================================================================== */
+
+/* Apply dark theme ONLY to these specific input fields */
+#modal_title,
+#modal_year,
+#modal_director,
+#modal_cast,
+#modal_plot_summary,
+#modal_review,
+#modal_poster {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
+  border-radius: 15px !important;
+  padding: 1rem 1.2rem !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  min-height: 50px !important;
+}
+
+/* Focus states for these specific fields */
+#modal_title:focus,
+#modal_year:focus,
+#modal_director:focus,
+#modal_cast:focus,
+#modal_plot_summary:focus,
+#modal_review:focus,
+#modal_poster:focus {
+  outline: none !important;
+  border-color: rgba(0, 168, 232, 0.6) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(0, 168, 232, 0.2) !important;
+}
+
+/* Placeholder colors for these specific fields */
+#modal_title::placeholder,
+#modal_year::placeholder,
+#modal_director::placeholder,
+#modal_cast::placeholder,
+#modal_plot_summary::placeholder,
+#modal_review::placeholder,
+#modal_poster::placeholder {
+  color: rgba(155, 163, 176, 0.7) !important;
+  opacity: 1 !important;
+}
+
+/* Textarea specific styling */
+#modal_cast,
+#modal_plot_summary,
+#modal_review {
+  min-height: 100px !important;
+  resize: vertical !important;
+}
+
+/* ==============================================================================
+   DURATION INPUT STYLING TO MATCH TITLE FIELD
+   ============================================================================== */
+
+/* Apply same styling as Title field to duration inputs */
+#modal_total_duration,
+#modal_watched_duration {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
+  border-radius: 15px !important;
+  padding: 1rem 1.2rem !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  min-height: 50px !important;
+}
+
+/* Focus states to match Title field */
+#modal_total_duration:focus,
+#modal_watched_duration:focus {
+  outline: none !important;
+  border-color: rgba(0, 168, 232, 0.6) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(0, 168, 232, 0.2) !important;
+}
+
+/* Disabled state styling */
+#modal_watched_duration:disabled {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: rgba(155, 163, 176, 0.5) !important;
+  cursor: not-allowed !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Placeholder colors */
+#modal_total_duration::placeholder,
+#modal_watched_duration::placeholder {
+  color: rgba(155, 163, 176, 0.7) !important;
+  opacity: 1 !important;
+}
+
+/* Ensure duration fields display properly in row */
+.duration-field {
+  display: flex !important;
+  gap: 1.5rem !important;
+}
+
+/* Space below progress bar in movie cards */
+.movie-card .progress-container {
+  margin-bottom: 0.5rem !important;
+}
+
+/* Empty star styling for 0 ratings */
+.movie-rating .empty-star {
+  color: rgba(155, 163, 176, 0.4) !important;
+}
+
+/* Rating display for 0 stars - always show 5 stars */
+.movie-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+}
+
+.movie-rating span:first-child {
+  color: #FFB800;
+}
+
+.movie-rating span:nth-child(2) {
+  color: rgba(155, 163, 176, 0.4);
+}
+
+/* View All button styling */
+.view-all {
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+}
+
+.view-all:hover {
+  color: #7B68EE !important;
+  transform: translateX(5px) !important;
+}
+
+/* EXCLUDE Media Type, Status, and Genre from dark theme override */
+#modal_media_type .selectize-input,
+#modal_status .selectize-input,
+#modal_genre .selectize-input {
+  background: rgba(37, 45, 58, 0.9) !important; /* Original selectize styling */
+  border: 1px solid rgba(123, 104, 238, 0.4) !important;
+}
+
+/* Ensure selectize dropdowns are not affected */
+.selectize-dropdown {
+  background: rgba(37, 45, 58, 0.98) !important;
+  border: 1px solid rgba(123, 104, 238, 0.4) !important;
+}
+
+/* Restore original styling for selectize inputs */
+.selectize-input {
+  background: rgba(37, 45, 58, 0.9) !important;
+  border: 1px solid rgba(123, 104, 238, 0.4) !important;
+  color: #E8E9ED !important;
+  border-radius: 15px !important;
+  padding: 1rem 1.2rem !important;
+}
+
+.selectize-input.focus {
+  border-color: rgba(123, 104, 238, 0.6) !important;
+  box-shadow: 0 0 20px rgba(123, 104, 238, 0.2) !important;
+}
+
+/* ==============================================================================
+   AUTO-SLIDING CAROUSEL FOR RECENTLY ADDED SECTION - UPDATED FOR HOVER FIX
+   ============================================================================== */
+
+.carousel-wrapper {
+  position: relative;
+  overflow: visible;
+  padding: 12px 3rem 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.carousel-track {
+  display: flex;
+  gap: 2rem;
+  animation: autoSlide 80s linear infinite;
+  width: max-content;
+}
+
+.carousel-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes autoSlide {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.carousel-card {
+  min-width: 240px;
+  max-width: 240px;
+  flex-shrink: 0;
+}
+
+/* Ensure the movie cards inside carousel maintain their styling */
+.carousel-card .movie-card {
+  background: rgba(26, 31, 41, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  overflow: visible;
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  height: 100%;
+  margin-top: -2px;
+  margin-bottom: 12px;
+}
+
+.carousel-card .movie-card:hover {
+  transform: translateY(-8px) scale(1.03);
+  border-color: rgba(0, 168, 232, 0.3);
+  box-shadow: 
+    0 25px 60px rgba(0, 168, 232, 0.25),
+    0 15px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  z-index: 10;
+}
+
+.carousel-card .movie-poster {
+  width: 100%;
+  height: 320px;
+  object-fit: cover;
+  transition: transform 0.6s ease;
+  border-radius: 20px 20px 0 0;
+}
+
+.carousel-card .movie-card:hover .movie-poster {
+  transform: scale(1.05);
+}
+
+/* Optional hover glow effect */
+.movie-card::after {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  right: -12px;
+  bottom: -12px;
+  border-radius: 24px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: -1;
+}
+
+.movie-card:hover::after {
+  opacity: 1;
+  background: radial-gradient(circle at center, 
+    rgba(0, 168, 232, 0.1) 0%, 
+    transparent 70%);
+}
+
+/* ==============================================================================
+   TMDB SEARCH SUGGESTIONS - FIXED STYLING
+   ============================================================================== */
+
+.tmdb-suggestions-container {
+  position: relative;
+  width: 100%;
+  z-index: 9999;
+}
+
+#tmdb-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0.5rem;
+  background: rgba(37, 45, 58, 0.98);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 10000;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: none;
+}
+
+#tmdb-suggestions.active {
+  display: block;
+}
+
+.tmdb-suggestion {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.tmdb-suggestion:last-child {
+  border-bottom: none;
+}
+
+.tmdb-suggestion:hover {
+  background: rgba(0, 168, 232, 0.15);
+}
+
+.suggestion-poster {
+  width: 60px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.suggestion-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.suggestion-title {
+  font-weight: 600;
+  color: #FFF;
+  margin-bottom: 0.3rem;
+  font-size: 15px;
+}
+
+.suggestion-year {
+  color: #9BA3B0;
+  font-size: 13px;
+  margin-bottom: 0.3rem;
+}
+
+.suggestion-type {
+  color: #00A8E8;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  text-transform: uppercase;
+}
+
+.suggestion-overview {
+  color: #9BA3B0;
+  font-size: 13px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.suggestion-loading {
+  padding: 2rem;
+  text-align: center;
+  color: #9BA3B0;
+  font-style: italic;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.suggestion-empty {
+  padding: 2rem;
+  text-align: center;
+  color: #9BA3B0;
+  font-style: italic;
+  font-size: 14px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Ensure modal Title field has proper z-index */
+.form-group.half[style*="position: relative"] {
+  z-index: 9998;
+}
+
+.form-group.half input#modal_title {
+  position: relative;
+  z-index: 9999;
+}
+
+/* ==============================================================================
+   TV SERIES TRACKING FIELDS - MATCHING TITLE FIELD STYLING
+   ============================================================================== */
+
+/* Apply same styling as Title field to TV Series tracking inputs */
+#modal_total_seasons,
+#modal_current_season,
+#modal_episodes_current_season,
+#modal_current_episode,
+#modal_total_episodes,
+#modal_total_episodes_watched {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
+  border-radius: 15px !important;
+  padding: 1rem 1.2rem !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  min-height: 50px !important;
+}
+
+/* Focus states to match Title field */
+#modal_total_seasons:focus,
+#modal_current_season:focus,
+#modal_episodes_current_season:focus,
+#modal_current_episode:focus,
+#modal_total_episodes:focus,
+#modal_total_episodes_watched:focus {
+  outline: none !important;
+  border-color: rgba(0, 168, 232, 0.6) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(0, 168, 232, 0.2) !important;
+}
+
+/* Disabled state styling */
+#modal_current_season:disabled,
+#modal_current_episode:disabled,
+#modal_total_episodes_watched:disabled {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: rgba(155, 163, 176, 0.5) !important;
+  cursor: not-allowed !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Placeholder colors */
+#modal_total_seasons::placeholder,
+#modal_current_season::placeholder,
+#modal_episodes_current_season::placeholder,
+#modal_current_episode::placeholder,
+#modal_total_episodes::placeholder,
+#modal_total_episodes_watched::placeholder {
+  color: rgba(155, 163, 176, 0.7) !important;
+  opacity: 1 !important;
+}
+
+/* TV Series fields container */
+.tv-series-fields {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1rem !important;
+}
+
+.tv-series-row {
+  display: flex !important;
+  gap: 1.5rem !important;
+  margin-bottom: 0 !important;
+}
+
+.tv-series-row:last-of-type {
+  margin-bottom: 0.3rem !important;   /* Even less space before indicator */
+}
+
+.tv-series-row .form-group.half {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.form-row:has(#episode-indicator) {
+  margin-bottom: 0.5rem !important;   /* Reduced spacing */
+}
+
+/* ==============================================================================
+   UNIFORM INPUT FIELD HEIGHT STYLING
+   ============================================================================== */
+
+/* Make all input fields match the height of Media Type selectize input */
+#modal_title,
+#modal_year,
+#modal_director,
+#modal_total_duration,
+#modal_watched_duration,
+#modal_total_seasons,
+#modal_current_season,
+#modal_episodes_current_season,
+#modal_current_episode,
+#modal_total_episodes,
+#modal_total_episodes_watched,
+.selectize-input {
+  min-height: 50px !important;      /* Match selectize height */
+  height: 50px !important;          /* Fixed height */
+  padding: 0.8rem 1rem !important;  /* Reduced padding */
+  line-height: 1.4 !important;      /* Better vertical alignment */
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Ensure selectize inputs have proper internal alignment */
+.selectize-input {
+  padding: 0.8rem 1.2rem !important;  /* Slightly more horizontal padding */
+}
+
+/* Adjust placeholder alignment for consistency */
+#modal_title::placeholder,
+#modal_year::placeholder,
+#modal_director::placeholder,
+#modal_total_duration::placeholder,
+#modal_watched_duration::placeholder,
+#modal_total_seasons::placeholder,
+#modal_current_season::placeholder,
+#modal_episodes_current_season::placeholder,
+#modal_current_episode::placeholder,
+#modal_total_episodes::placeholder,
+#modal_total_episodes_watched::placeholder,
+.selectize-input .placeholder {
+  line-height: 1.4 !important;
+  display: flex;
+  align-items: center;
+}
+
+/* Ensure numeric inputs don't show spinner buttons */
+input[type="number"] {
+  -moz-appearance: textfield !important;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+
+/* Make sure textareas maintain their original styling */
+#modal_cast,
+#modal_plot_summary,
+#modal_review {
+  min-height: 100px !important;  /* Keep textareas tall */
+  height: auto !important;       /* Allow expansion */
+  padding: 1rem !important;      /* Original padding */
+}
+
+/* Adjust font size for better fit */
+#modal_title,
+#modal_year,
+#modal_director,
+#modal_total_duration,
+#modal_watched_duration,
+#modal_total_seasons,
+#modal_current_season,
+#modal_episodes_current_season,
+#modal_current_episode,
+#modal_total_episodes,
+#modal_total_episodes_watched {
+  font-size: 14px !important;
+}
+
+/* Ensure focus states maintain proper height */
+#modal_title:focus,
+#modal_year:focus,
+#modal_director:focus,
+#modal_total_duration:focus,
+#modal_watched_duration:focus,
+#modal_total_seasons:focus,
+#modal_current_season:focus,
+#modal_episodes_current_season:focus,
+#modal_current_episode:focus,
+#modal_total_episodes:focus,
+#modal_total_episodes_watched:focus,
+.selectize-input.focus {
+  min-height: 50px !important;
+  height: 50px !important;
+}
+
+/* ==============================================================================
+   MODAL CLOSE BUTTON ALIGNMENT FIX - CORRECTED
+   ============================================================================== */
+
+/* Remove the pseudo-element approach - we'll fix the existing element */
+.modal-close-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.modal-close {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 45px !important;
+  height: 45px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+  font-size: 32px !important;
+  position: relative !important;
+}
+
+/* REMOVE the pseudo-element that was creating a duplicate X */
+.modal-close:before {
+  display: none !important;
+}
+
+/* Fix the alignment of the existing X text */
+.modal-close {
+  font-size: 28px !important; /* Slightly smaller for better fit */
+  font-weight: 300 !important; /* Lighter weight for better appearance */
+  background: rgba(255, 255, 255, 0.05) !important; /* Restore background */
+  border: 1px solid rgba(255, 255, 255, 0.1) !important; /* Restore border */
+}
+
+/* Ensure proper hover state */
+.modal-close:hover {
+  background: rgba(239, 71, 111, 0.2) !important;
+  color: #EF476F !important;
+  transform: rotate(90deg) !important;
+  border-color: rgba(239, 71, 111, 0.3) !important;
+}
+
+/* Center the X properly */
+.modal-close span {
+  display: block !important;
+  line-height: 1 !important;
+  margin-top: -1px !important; /* Fine-tune vertical alignment */
+  transform: none !important;
+}
+
+/* Ensure no other pseudo-elements interfere */
+.modal-close:after {
+  display: none !important;
+}
+
+/* ==============================================================================
+   CLEAN EPISODE INDICATOR STYLING (Non-clickable, informational)
+   ============================================================================== */
+
+.episode-indicator {
+  background: rgba(15, 20, 28, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+margin: 0.2rem 0 0.5rem !important;
+  padding: 0.8rem !important;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  user-select: none;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+/* Remove any hover effects that make it look clickable */
+.episode-indicator:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: rgba(255, 255, 255, 0.08);
+  cursor: default;
+}
+
+/* Subtle background gradient */
+.episode-indicator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.02) 0%, 
+    transparent 50%,
+    rgba(0, 0, 0, 0.1) 100%);
+  pointer-events: none;
+}
+
+/* Status-based styling - subtle colors */
+.episode-indicator[data-status="watched"] {
+  color: #C0C5CE;
+  border-left: 5px solid #06D6A0;
+  background: rgba(6, 214, 160, 0.05);
+}
+
+.episode-indicator[data-status="watching"] {
+  color: #C0C5CE;
+  border-left: 5px solid #00A8E8;
+  background: rgba(0, 168, 232, 0.05);
+}
+
+.episode-indicator[data-status="unwatched"] {
+  color: #9BA3B0;
+  border-left: 5px solid rgba(155, 163, 176, 0.5);
+  background: rgba(155, 163, 176, 0.03);
+}
+
+/* Status badge - subtle indication */
+.episode-indicator::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 5px;
+  height: 100%;
+  background: currentColor;
+  opacity: 0.3;
+}
+
+/* Text styling - subtle emphasis */
+.episode-indicator strong {
+  font-weight: 600;
+  color: #E8E9ED;
+}
+
+.episode-indicator .title-emphasis {
+  font-weight: 600;
+  color: #00A8E8;
+}
+
+/* Animation for status changes */
+@keyframes subtleFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.episode-indicator {
+  animation: subtleFadeIn 0.3s ease-out;
+}
+
+/* Make it look like a text block, not a button */
+.episode-indicator {
+  box-shadow: none;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.2);
+  letter-spacing: 0.01em;
+}
+
+/* Remove any border that looks like a button outline */
+.episode-indicator {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 3px solid transparent;
+}
+
+/* Make text more readable */
+.episode-indicator {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  line-height: 1.6;
+}
+
+/* Subtle status icon (optional, if you want visual indicators without emoji) */
+.episode-indicator .status-icon {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  position: relative;
+  top: -1px;
+}
+
+.episode-indicator[data-status="watched"] .status-icon {
+  background: #06D6A0;
+  box-shadow: 0 0 8px rgba(6, 214, 160, 0.3);
+}
+
+.episode-indicator[data-status="watching"] .status-icon {
+  background: #00A8E8;
+  box-shadow: 0 0 8px rgba(0, 168, 232, 0.3);
+}
+
+.episode-indicator[data-status="unwatched"] .status-icon {
+  background: #9BA3B0;
+  box-shadow: 0 0 8px rgba(155, 163, 176, 0.3);
+}
+
+/* ==============================================================================
+   DETAILS MODAL STYLES - MATCHING ADD MODAL DESIGN
+   ============================================================================== */
+
+.details-modal {
+  max-width: 900px !important;
+  width: 95% !important;
+}
+
+.details-row {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.details-poster {
+  flex: 0 0 300px;
+  max-width: 300px;
+}
+
+.details-poster img {
+  width: 100%;
+  height: 450px;
+  object-fit: cover;
+  border-radius: 20px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.details-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.details-badge {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border-radius: 25px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  text-transform: uppercase;
+}
+
+.details-badge.badge-watched {
+  background: rgba(6, 214, 160, 0.3);
+  color: #06D6A0;
+  border-color: rgba(6, 214, 160, 0.4);
+}
+
+.details-badge.badge-watching {
+  background: rgba(255, 203, 71, 0.3);
+  color: #FFCB47;
+  border-color: rgba(255, 203, 71, 0.4);
+}
+
+.details-badge.badge-unwatched {
+  background: rgba(155, 163, 176, 0.3);
+  color: #9BA3B0;
+  border-color: rgba(155, 163, 176, 0.4);
+}
+
+.details-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #9BA3B0;
+  font-size: 15px;
+  flex-wrap: wrap;
+}
+
+.details-meta .media-type {
+  color: #00A8E8;
+  font-weight: 600;
+}
+
+.details-meta .year {
+  color: #FFB800;
+  font-weight: 600;
+}
+
+.details-meta .genre {
+  color: #9BA3B0;
+  font-style: italic;
+}
+
+.details-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.star-rating-display {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.star-rating-display .rating-value {
+  margin-left: 8px;
+  font-weight: 700;
+  color: #FFB800;
+  font-size: 16px;
+}
+
+.details-progress {
+  margin-top: 0.5rem;
+}
+
+.details-progress .progress-label {
+  font-size: 14px;
+  color: #C0C5CE;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.details-progress .progress-bg {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.details-progress .progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 20px rgba(0, 168, 232, 0.3);
+}
+
+.details-field {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.details-field .field-label {
+  color: #9BA3B0;
+  font-weight: 600;
+  font-size: 14px;
+  min-width: 120px;
+}
+
+.details-field .field-value {
+  color: #E8E9ED;
+  font-size: 14px;
+  flex: 1;
+}
+
+.details-section .section-title {
+  font-size: 20px;
+  color: #FFF;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.details-section .section-title-plot {
+  font-size: 20px;
+  color: #FFF;
+  margin-bottom: 1rem;
+  font-weight: 700;
+}
+
+.plot-summary {
+  color: #C0C5CE;
+  line-height: 1.6;
+  font-size: 15px;
+  margin-bottom: 1.5rem;
+}
+
+.review {
+  color: #9BA3B0;
+  line-height: 1.6;
+  font-size: 14px;
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 10px;
+  border-left: 3px solid #00A8E8;
+}
+
+.tv-details-grid, .movie-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.tv-detail, .movie-detail {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tv-detail .detail-label, .movie-detail .detail-label {
+  display: block;
+  color: #9BA3B0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.tv-detail .detail-value, .movie-detail .detail-value {
+  display: block;
+  color: #FFF;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+/* Make movie cards clickable */
+.movie-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.movie-card:hover {
+  cursor: pointer;
+}
+
+/* Responsive details modal */
+@media (max-width: 768px) {
+  .details-row {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .details-poster {
+    flex: 0 0 auto;
+    max-width: 100%;
+    align-self: center;
+  }
+  
+  .details-poster img {
+    height: 350px;
+  }
+  
+  .tv-details-grid, .movie-details-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .details-modal {
+    max-width: 95% !important;
+    margin: 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .tv-details-grid, .movie-details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .details-poster img {
+    height: 300px;
+  }
+}
+
+/* Responsive carousel */
+@media (max-width: 768px) {
+  .carousel-card {
+    min-width: 200px;
+    max-width: 200px;
+  }
+  
+  .carousel-track {
+    gap: 1.5rem;
+    animation: autoSlide 75s linear infinite;
+  }
+  
+  .carousel-wrapper {
+    padding: 12px 1.5rem 24px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .pagination-container {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .pagination-nav-btn {
+    order: 1;
+    min-width: 100px;
+    padding: 0.7rem 1.2rem;
+    font-size: 13px;
+  }
+  
+  .page-info {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+    margin-top: 0.5rem;
+    min-width: auto;
+  }
+  
+  .page-numbers {
+    order: 2;
+  }
+  
+  .tab-content-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .controls-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-container {
+    min-width: 100%;
+  }
+  
+  .sort-filter-container {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .dropdown-menu {
+    min-width: 300px;
+  }
+  
+  .filter-dropdown-content {
+    grid-template-columns: 1fr;
+  }
+  
+  /* Responsive grid for medium screens */
+  .movies-grid {
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 2rem;
+  }
+  
+  /* Adjust duration fields for mobile */
+  .duration-field {
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+  
+  .duration-field .form-group.half {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .pagination-wrapper {
+    padding: 0 1.5rem;
+  }
+  
+  .pagination-nav-btn {
+    min-width: 90px;
+    padding: 0.6rem 1rem;
+    font-size: 13px;
+  }
+  
+  .page-number {
+    min-width: 36px;
+    padding: 0.5rem 0.8rem;
+    font-size: 13px;
+  }
+  
+  .page-info {
+    font-size: 13px;
+  }
+  
+  .page-info .current-page {
+    font-size: 14px;
+    padding: 3px 8px;
+  }
+  
+  .tab-content-header {
+    padding: 0 1.5rem 1.5rem;
+  }
+  
+  .tab-content-info {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .section-header {
+    padding: 2rem 1.5rem 1.5rem;
+  }
+  
+  .movies-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1.5rem;
+    padding: 0 1.5rem 2rem;
+  }
+  
+  .controls-container {
+    padding: 0 1.5rem 2rem;
+  }
+  
+  .sort-filter-container {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .sort-container, .filter-container {
+    width: 100%;
+  }
+  
+  .sort-btn, .filter-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .dropdown-menu {
+    min-width: 280px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  
+  .carousel-card .movie-card,
+  .movie-card {
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+  
+  .movie-badge {
+    top: 20px;
+  }
+}
+/* ==============================================================================
+   ADD THESE CSS RULES TO THE END OF YOUR style.css FILE
+   ============================================================================== */
+
+/* Login Modal Specific Styles */
+.login-modal {
+  max-width: 450px !important;
+}
+
+/* Gradient Title for Login Modal */
+.gradient-title {
+  background: linear-gradient(135deg, #00A8E8 0%, #7B68EE 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+/* Password Input Wrapper */
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  width: 100% !important;
+  padding-right: 45px !important;
+}
+
+/* Password Toggle Icon */
+.password-toggle-icon {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9BA3B0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10;
+  font-size: 16px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle-icon:hover {
+  color: #00A8E8;
+}
+
+/* Login Button Styling */
+.login-modal .btn-primary {
+  margin-top: 2rem;
+  padding: 1rem;
+  font-size: 16px;
+}
+
+/* Form Labels for Login */
+.login-modal .form-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #C0C5CE;
+  margin-bottom: 0.6rem;
+}
+
+/* Login Input Fields */
+.login-modal input[type="text"],
+.login-modal input[type="password"] {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  padding: 0.9rem 1rem !important;
+  font-size: 15px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: all 0.3s ease !important;
+}
+
+.login-modal input[type="text"]:focus,
+.login-modal input[type="password"]:focus {
+  outline: none !important;
+  border-color: rgba(0, 168, 232, 0.6) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 0 20px rgba(0, 168, 232, 0.2) !important;
+}
+
+.login-modal input::placeholder {
+  color: rgba(155, 163, 176, 0.6) !important;
+}
+
+/* Shiny Specific Overrides for Login Inputs */
+#login_email,
+#login_password {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
+  border-radius: 12px !important;
+  padding: 0.9rem 1rem !important;
+  font-size: 15px !important;
+}
+
+/* Login Modal Body */
+.login-modal .modal-body {
+  padding: 2rem 2.5rem 2.5rem;
+}
+
+/* Form Group Spacing in Login Modal */
+.login-modal .form-group {
+  margin-bottom: 1.5rem;
+}
+
+/* Error Message Styling */
+.shiny-notification-error {
+  background: rgba(239, 71, 111, 0.95) !important;
+  color: #FFF !important;
+  border: 1px solid rgba(239, 71, 111, 0.4) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: 0 10px 30px rgba(239, 71, 111, 0.3) !important;
+}
+
+/* Success Message Styling */
+.shiny-notification-message {
+  background: rgba(6, 214, 160, 0.95) !important;
+  color: #FFF !important;
+  border: 1px solid rgba(6, 214, 160, 0.4) !important;
+  border-radius: 12px !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: 0 10px 30px rgba(6, 214, 160, 0.3) !important;
+}
+
+/* ==============================================================================
+   WELCOMING NOTIFICATION TOAST - CUSTOM DESIGN
+   ============================================================================== */
+
+.welcoming-toast {
+  background: linear-gradient(135deg, 
+    rgba(20, 25, 35, 0.95) 0%, 
+    rgba(15, 20, 28, 0.98) 100%) !important;
+  backdrop-filter: blur(40px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(40px) saturate(200%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 20px !important;
+  box-shadow: 
+    0 25px 70px rgba(0, 168, 232, 0.35),
+    0 15px 40px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+  padding: 3.5rem 4rem !important;
+  max-width: 400px !important;
+  min-width: 380px !important;
+  position: fixed !important;
+  bottom: 30px !important;
+  right: 30px !important;
+  overflow: hidden !important;
+  z-index: 10000 !important;
+  animation: toastEntrance 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+  transform-origin: bottom center !important;
+}
+
+/* Animated border effect */
+.welcoming-toast::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 20px;
+  padding: 2px;
+  background: linear-gradient(135deg, 
+    #00A8E8 0%, 
+    #7B68EE 25%, 
+    #FFB800 50%, 
+    #7B68EE 75%, 
+    #00A8E8 100%);
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+  animation: borderGlow 3s ease-in-out infinite;
+}
+
+/* Subtle background glow */
+.welcoming-toast::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 120%;
+  height: 120%;
+  background: radial-gradient(
+    circle at center,
+    rgba(0, 168, 232, 0.15) 0%,
+    rgba(123, 104, 238, 0.1) 30%,
+    transparent 70%
+  );
+  filter: blur(40px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Toast content wrapper */
+.toast-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* Toast text container */
+.toast-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Main welcome message */
+.toast-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #FFFFFF;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  line-height: 1.3;
+  background: linear-gradient(135deg, #FFF 0%, #9BA3B0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* User name highlight */
+.user-name {
+  color: #00A8E8 !important;
+  font-weight: 900;
+  text-shadow: 0 2px 10px rgba(0, 168, 232, 0.5);
+  -webkit-text-fill-color: #00A8E8 !important;
+}
+
+/* Subtitle */
+.toast-subtitle {
+  font-size: 14px;
+  color: #C0C5CE;
+  font-weight: 500;
+  line-height: 1.4;
+  opacity: 0.9;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Animations */
+@keyframes toastEntrance {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes progressShimmer {
+  0% {
+    background-position: 200% 0;
+    width: 0%;
+  }
+  50% {
+    background-position: 0% 0;
+    width: 100%;
+  }
+  100% {
+    background-position: -200% 0;
+    width: 100%;
+  }
+}
+
+/* Exit animation */
+@keyframes toastExit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+  }
+}
+
+.welcoming-toast.exiting {
+  animation: toastExit 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .welcoming-toast {
+    min-width: 320px !important;
+    max-width: 90vw !important;
+    padding: 1.2rem 1.5rem !important;
+    bottom: 20px !important;
+    right: 20px !important;
+  }
+  
+  .toast-title {
+    font-size: 18px;
+  }
+  
+  .toast-subtitle {
+    font-size: 13px;
+  }
+}
+
+/* Target the review section specifically */
+.details-modal .review-section {
+  margin-top: -2rem !important;
+  padding-top: -2rem !important;
+}
+
+.details-modal .review-section {
+  margin-top: -1.5rem !important;
+  padding-top: -1.5rem !important;
+  border-top: none !important;
+}
+
+.section-title-plot {
+  font-size: 32px;
+  font-weight: 800;
+  color: #FFF;
+  background: linear-gradient(135deg, #FFF 0%, #9BA3B0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  margin-top: 0.5rem !important;
+  padding-top: 0.5rem !important;
+}
+
+/* ==============================================================================
+   MODAL FIELD VISIBILITY - INITIAL STATE
+   ============================================================================== */
+
+/* Hide duration fields by default (show only for movies) */
+.duration-field {
+  display: none !important;
+}
+
+/* Hide TV series fields by default (show only for TV series) */
+.tv-series-fields {
+  display: none !important;
+}
+
+/* Hide episode indicator by default */
+#episode-indicator {
+  display: none !important;
+}
+
+/* Override inline styles when fields should be visible */
+.duration-field[style*="display: flex"],
+.duration-field[style*="display: block"] {
+  display: flex !important;
+}
+
+.tv-series-fields[style*="display: flex"],
+.tv-series-fields[style*="display: block"] {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#episode-indicator[style*="display: block"] {
+  display: block !important;
+}
+
+.form-control[readonly] {
+  background: rgba(255, 255, 255, 0.05);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* ==============================================================================
+   DETAILS MODAL - UPDATED LAYOUT FOR RATING, PLOT SUMMARY AND PROGRESS
+   ============================================================================== */
+
+/* Style for plot summary in details-field format */
+.details-modal .details-field:has(.field-label:contains("Plot Summary:")) {
+  margin-top: 1rem !important;
+  align-items: flex-start !important;
+}
+
+.details-modal .details-field:has(.field-label:contains("Plot Summary:")) .field-label {
+  min-width: 120px !important;
+  color: #00A8E8 !important;
+  font-weight: 700 !important;
+}
+
+.details-modal .details-field:has(.field-label:contains("Plot Summary:")) .field-value {
+  color: #C0C5CE !important;
+  line-height: 1.6 !important;
+  font-size: 15px !important;
+  margin-top: 0.2rem !important;
+}
+
+/* Style for rating in details-field format */
+.details-modal .details-field:has(.field-label:contains("Your Rating:")) {
+  margin-top: 0.5rem !important;
+}
+
+.details-modal .details-field:has(.field-label:contains("Your Rating:")) .field-label {
+  min-width: 120px !important;
+  color: #00A8E8 !important;
+  font-weight: 700 !important;
+}
+
+.details-modal .details-field:has(.field-label:contains("Your Rating:")) .field-value {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+/* Style for progress in details-field format - label and value on same row */
+.details-modal .progress-field {
+  margin-top: 1rem !important;
+  align-items: flex-start !important;
+}
+
+.details-modal .progress-field .field-label {
+  min-width: 120px !important;
+  font-weight: 700 !important;
+  padding-top: 0.3rem !important; /* Align with progress content */
+}
+
+.details-modal .progress-field .field-value.progress-value {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+}
+
+/* Progress text styling - inline with label */
+.details-modal .progress-field .progress-text {
+  font-size: 14px !important;
+  color: #C0C5CE !important;
+  font-weight: 500 !important;
+  margin-bottom: 4px !important;
+  display: block !important;
+  width: 100% !important;
+}
+
+/* Progress bar styling for details modal */
+.details-modal .progress-field .progress-bg {
+  height: 8px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  width: 100% !important;
+  margin-top: 0.3rem !important;
+}
+
+.details-modal .progress-field .progress-fill {
+  height: 100% !important;
+  border-radius: 4px !important;
+  transition: width 0.4s ease !important;
+  box-shadow: 0 0 20px rgba(0, 168, 232, 0.3) !important;
+}
+
+/* Adjust star rating display for left alignment */
+.details-modal .star-rating-display {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.details-modal .star-rating-display .rating-value {
+  margin-left: 8px !important;
+  font-weight: 700 !important;
+  color: #FFB800 !important;
+  font-size: 16px !important;
+}
+
+/* Remove old plot summary section styles that are no longer needed */
+.details-modal .section-title-plot,
+.details-modal .plot-summary {
+  display: none !important;
+}
+
+/* Remove old progress section styles */
+.details-modal .progress-section-top,
+.details-modal .details-section:has(.details-progress) {
+  display: none !important;
+}
+
+/* Ensure proper spacing between details fields */
+.details-info .details-field {
+  margin-bottom: 0.8rem !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .details-modal .details-field:has(.field-label:contains("Plot Summary:")) .field-label,
+  .details-modal .details-field:has(.field-label:contains("Your Rating:")) .field-label,
+  .details-modal .progress-field .field-label {
+    min-width: 100px !important;
+    font-size: 13px !important;
+  }
+  
+  .details-modal .details-field:has(.field-label:contains("Plot Summary:")) .field-value {
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+  }
+  
+  .details-modal .progress-field .field-value {
+    gap: 0.3rem !important;
+  }
+  
+  .details-modal .progress-label-inline {
+    font-size: 13px !important;
+  }
+}
+
+/* ==============================================================================
+   STATS PAGE STYLES - UPDATED WITH TAB NAV
+   ============================================================================== */
+
+.stats-page {
+  padding: 0 3rem 3rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Stats Section Header with Tab Nav */
+.stats-page .section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 0 1.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Stats Tab Navigation */
+.stats-tab-nav {
+  display: flex;
+  gap: 0.8rem;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px;
+  border-radius: 15px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stats-tab-btn {
+  padding: 0.8rem 1.5rem;
+  background: transparent;
+  border: none;
+  color: #9BA3B0;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 15px;
+}
+
+.stats-tab-btn:hover {
+  background: rgba(0, 168, 232, 0.15);
+  color: #00A8E8;
+}
+
+.stats-tab-btn.active {
+  background: rgba(0, 168, 232, 0.3);
+  border-color: rgba(0, 168, 232, 0.5);
+  color: #00A8E8;
+  box-shadow: 0 8px 20px rgba(0, 168, 232, 0.2);
+}
+
+/* Stats Grid adjustments for Stats page */
+.stats-page .stats-grid {
+  margin-top: 1rem;
+  padding: 0;
+}
+
+.stats-page .stat-card {
+  height: 100%;
+}
+
+/* Responsive adjustments for stats page */
+@media (max-width: 768px) {
+  .stats-page {
+    padding: 0 1.5rem 2rem;
+  }
+  
+  .stats-page .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem 0 1rem;
+  }
+  
+  .stats-tab-nav {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .stats-tab-btn {
+    flex: 1;
+    text-align: center;
+    padding: 0.5rem 0.8rem;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-tab-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 12px;
+  }
+  
+  .stats-page .section-header {
+    padding: 1rem 0 0.8rem;
+  }
+}
+
+/* ==============================================================================
+   EDIT MODAL 
+   ============================================================================== */
+
+/* FIX: Edit modal primary button should match add modal */
+.edit-modal .btn-primary {
+  background: linear-gradient(135deg, #00A8E8 0%, #7B68EE 100%) !important;
+  box-shadow: 0 10px 30px rgba(0, 168, 232, 0.4) !important;
+}
+
+.edit-modal .btn-primary:hover {
+  background: linear-gradient(135deg, #00A8E8 0%, #7B68EE 100%) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: 0 15px 40px rgba(0, 168, 232, 0.6) !important;
+}
+
+/* ==============================================================================
+   EDIT BUTTON STYLES FOR DETAILS MODAL
+   ============================================================================== */
+
+.details-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.edit-button {
+  padding: 0.6rem 1.2rem;
+  background: rgba(0, 168, 232, 0.2);
+  border: 1px solid rgba(0, 168, 232, 0.3);
+  border-radius: 12px;
+  color: #00A8E8;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.edit-button:hover {
+  background: rgba(0, 168, 232, 0.3);
+  color: #00A8E8;
+  transform: translateY(-2px);
+  border-color: rgba(0, 168, 232, 0.4);
+  box-shadow: 0 5px 15px rgba(0, 168, 232, 0.2);
+}
+
+.edit-button i {
+  font-size: 14px;
+}
+
+/* Edit modal specific styles */
+.edit-modal {
+  max-width: 700px !important;
+  width: 95% !important;
+}
+
+/* Edit modal header */
+.edit-modal .modal-title {
+  background: linear-gradient(135deg, #FFF 0%, #9BA3B0 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  font-size: 28px !important;
+  font-weight: 800 !important;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Edit modal form adjustments */
+.edit-modal .modal-body {
+  max-height: 80vh;
+}
+
+/* Edit button in details modal - specific positioning */
+.details-modal .details-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Ensure the badge and edit button are properly aligned */
+.details-modal .details-badge {
+  margin: 0;
+}
+
+/* Edit modal input fields - match add modal styling */
+#edit_modal_title,
+#edit_modal_year,
+#edit_modal_director,
+#edit_modal_cast,
+#edit_modal_plot_summary,
+#edit_modal_review,
+#edit_modal_poster,
+#edit_modal_total_duration,
+#edit_modal_watched_duration,
+#edit_modal_total_seasons,
+#edit_modal_current_season,
+#edit_modal_episodes_current_season,
+#edit_modal_current_episode,
+#edit_modal_total_episodes,
+#edit_modal_total_episodes_watched {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
+  border-radius: 15px !important;
+  padding: 1rem 1.2rem !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+  min-height: 50px !important;
+}
+
+/* Focus states for edit modal fields */
+#edit_modal_title:focus,
+#edit_modal_year:focus,
+#edit_modal_director:focus,
+#edit_modal_cast:focus,
+#edit_modal_plot_summary:focus,
+#edit_modal_review:focus,
+#edit_modal_poster:focus,
+#edit_modal_total_duration:focus,
+#edit_modal_watched_duration:focus,
+#edit_modal_total_seasons:focus,
+#edit_modal_current_season:focus,
+#edit_modal_episodes_current_season:focus,
+#edit_modal_current_episode:focus,
+#edit_modal_total_episodes:focus,
+#edit_modal_total_episodes_watched:focus {
+  outline: none !important;
+  border-color: rgba(0, 168, 232, 0.6) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.2),
+    0 0 20px rgba(0, 168, 232, 0.2) !important;
+}
+
+/* Edit modal placeholder colors */
+#edit_modal_title::placeholder,
+#edit_modal_year::placeholder,
+#edit_modal_director::placeholder,
+#edit_modal_cast::placeholder,
+#edit_modal_plot_summary::placeholder,
+#edit_modal_review::placeholder,
+#edit_modal_poster::placeholder,
+#edit_modal_total_duration::placeholder,
+#edit_modal_watched_duration::placeholder,
+#edit_modal_total_seasons::placeholder,
+#edit_modal_current_season::placeholder,
+#edit_modal_episodes_current_season::placeholder,
+#edit_modal_current_episode::placeholder,
+#edit_modal_total_episodes::placeholder,
+#edit_modal_total_episodes_watched::placeholder {
+  color: rgba(155, 163, 176, 0.7) !important;
+  opacity: 1 !important;
+}
+
+/* Edit modal textareas */
+#edit_modal_cast,
+#edit_modal_plot_summary,
+#edit_modal_review {
+  min-height: 100px !important;
+  resize: vertical !important;
+}
+
+/* Edit modal TMDB suggestions */
+#edit_tmdb-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 0.5rem;
+  background: rgba(37, 45, 58, 0.98);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 10000;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: none;
+}
+
+#edit_tmdb-suggestions.active {
+  display: block;
+}
+
+/* Edit modal episode indicator */
+#edit_episode-indicator {
+  background: rgba(15, 20, 28, 0.6);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  margin: 0.2rem 0 0.5rem !important;
+  padding: 0.8rem !important;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  cursor: default;
+  user-select: none;
+  pointer-events: none;
+  transition: all 0.2s ease;
+  display: none;
+}
+
+/* Status-based styling for edit modal indicator */
+#edit_episode-indicator[data-status="watched"] {
+  color: #C0C5CE;
+  border-left: 5px solid #06D6A0;
+  background: rgba(6, 214, 160, 0.05);
+}
+
+#edit_episode-indicator[data-status="watching"] {
+  color: #C0C5CE;
+  border-left: 5px solid #00A8E8;
+  background: rgba(0, 168, 232, 0.05);
+}
+
+#edit_episode-indicator[data-status="unwatched"] {
+  color: #9BA3B0;
+  border-left: 5px solid rgba(155, 163, 176, 0.5);
+  background: rgba(155, 163, 176, 0.03);
+}
+
+/* Edit modal selectize inputs */
+#edit_modal_media_type .selectize-input,
+#edit_modal_status .selectize-input,
+#edit_modal_genre .selectize-input {
+  background: rgba(37, 45, 58, 0.9) !important;
+  border: 1px solid rgba(123, 104, 238, 0.4) !important;
+  color: #E8E9ED !important;
+  border-radius: 15px !important;
+  padding: 1rem 1.2rem !important;
+}
+
+/* Edit modal form field heights - match add modal */
+#edit_modal_title,
+#edit_modal_year,
+#edit_modal_director,
+#edit_modal_total_duration,
+#edit_modal_watched_duration,
+#edit_modal_total_seasons,
+#edit_modal_current_season,
+#edit_modal_episodes_current_season,
+#edit_modal_current_episode,
+#edit_modal_total_episodes,
+#edit_modal_total_episodes_watched,
+#edit_modal_media_type .selectize-input,
+#edit_modal_status .selectize-input,
+#edit_modal_genre .selectize-input {
+  min-height: 50px !important;
+  height: 50px !important;
+  padding: 0.8rem 1rem !important;
+  line-height: 1.4 !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* Edit modal TMDB search input positioning */
+#edit_modal_title {
+  position: relative;
+  z-index: 9999;
+}
+
+.form-group.half:has(#edit_modal_title) {
+  position: relative;
+  z-index: 9998;
+}
+
+/* Disabled state styling for edit modal */
+#edit_modal_watched_duration:disabled,
+#edit_modal_current_season:disabled,
+#edit_modal_current_episode:disabled,
+#edit_modal_total_episodes_watched:disabled {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: rgba(155, 163, 176, 0.5) !important;
+  cursor: not-allowed !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Edit modal readonly fields */
+.form-control[readonly] {
+  background: rgba(255, 255, 255, 0.05) !important;
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+}
+
+/* ==============================================================================
+   EDIT MODAL - FIX READONLY STATE FOR WATCHING STATUS
+   ============================================================================== */
+
+/* Ensure readonly fields are clearly distinguishable */
+#edit_modal_current_season[readonly],
+#edit_modal_current_episode[readonly],
+#edit_modal_total_episodes_watched[readonly],
+#edit_modal_watched_duration[readonly] {
+  background: rgba(255, 255, 255, 0.05) !important;
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* But when NOT readonly (for Watching status), make them fully editable */
+#edit_modal_current_season:not([readonly]),
+#edit_modal_current_episode:not([readonly]),
+#edit_modal_total_episodes_watched:not([readonly]),
+#edit_modal_watched_duration:not([readonly]) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  cursor: text !important;
+  opacity: 1 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Same for add modal */
+#modal_current_season[readonly],
+#modal_current_episode[readonly],
+#modal_total_episodes_watched[readonly],
+#modal_watched_duration[readonly] {
+  background: rgba(255, 255, 255, 0.05) !important;
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+#modal_current_season:not([readonly]),
+#modal_current_episode:not([readonly]),
+#modal_total_episodes_watched:not([readonly]),
+#modal_watched_duration:not([readonly]) {
+  background: rgba(255, 255, 255, 0.08) !important;
+  cursor: text !important;
+  opacity: 1 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Disabled state (different from readonly) */
+#edit_modal_current_season:disabled,
+#edit_modal_current_episode:disabled,
+#edit_modal_total_episodes_watched:disabled,
+#edit_modal_watched_duration:disabled,
+#modal_current_season:disabled,
+#modal_current_episode:disabled,
+#modal_total_episodes_watched:disabled,
+#modal_watched_duration:disabled {
+  background: rgba(255, 255, 255, 0.03) !important;
+  cursor: not-allowed !important;
+  opacity: 0.4 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ==============================================================================
+   EDIT MODAL STAR RATING FIX - Ensure proper styling
+   ============================================================================== */
+
+/* Make sure star rating works for both add and edit modals */
+.modal-box:not(.details-modal) .star-rating-input .star {
+  font-size: 28px !important;
+  color: rgba(155, 163, 176, 0.4) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+}
+
+.modal-box:not(.details-modal) .star-rating-input .star.filled {
+  color: #FFB800 !important;
+  text-shadow: 0 0 20px rgba(255, 184, 0, 0.5) !important;
+}
+
+/* Specific hover states for all modals (add and edit) */
+.modal-box:not(.details-modal) .star-rating-input .star:hover {
+  color: #FFB800 !important;
+  text-shadow: 0 0 10px rgba(255, 184, 0, 0.5) !important;
+}
+
+/* Edit modal primary button styling - KEEP ORIGINAL (at top) */
+.edit-modal .btn-primary {
+  background: linear-gradient(135deg, #FFB800 0%, #FF8E00 100%);
+  box-shadow: 0 10px 30px rgba(255, 184, 0, 0.4);
+}
+
+.edit-modal .btn-primary:hover {
+  background: linear-gradient(135deg, #FFCB47 0%, #FFA500 100%);
+  box-shadow: 0 15px 40px rgba(255, 184, 0, 0.6);
+}
+
+/* Responsive adjustments for edit modal */
+@media (max-width: 768px) {
+  .details-status-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .edit-button {
+    align-self: flex-end;
+    margin-top: -2.5rem;
+  }
+  
+  .edit-modal {
+    max-width: 95% !important;
+    margin: 1rem !important;
+  }
+  
+  .edit-modal .form-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .edit-modal .form-group.half {
+    width: 100% !important;
+  }
+  
+  .edit-modal .duration-field,
+  .edit-modal .tv-series-row {
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+}
+
+/* ==============================================================================
+   DELETE BUTTON STYLES FOR DETAILS MODAL - Matching Edit Button Design
+   ============================================================================== */
+
+.details-action-buttons {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.delete-button {
+  padding: 0.6rem 1.2rem;
+  background: rgba(239, 71, 111, 0.2);
+  border: 1px solid rgba(239, 71, 111, 0.3);
+  border-radius: 12px;
+  color: #EF476F;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.delete-button:hover {
+  background: rgba(239, 71, 111, 0.3);
+  color: #EF476F;
+  transform: translateY(-2px);
+  border-color: rgba(239, 71, 111, 0.4);
+  box-shadow: 0 5px 15px rgba(239, 71, 111, 0.2);
+}
+
+.delete-button i {
+  font-size: 14px;
+}
+
+/* Delete confirmation modal specific styles */
+.confirm-delete-modal {
+  max-width: 500px !important;
+  width: 95% !important;
+}
+
+.confirm-delete-modal .modal-header {
+  background: rgba(239, 71, 111, 0.1);
+  border-bottom: 1px solid rgba(239, 71, 111, 0.2);
+}
+
+.confirm-delete-modal .modal-title {
+  color: #EF476F !important;
+  font-size: 24px !important;
+  font-weight: 700 !important;
+  background: none !important;
+  -webkit-text-fill-color: #EF476F !important;
+}
+
+/* Delete warning section */
+.delete-warning {
+  text-align: center;
+  padding: 1rem 0 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.delete-warning h3 {
+  color: #FFF;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.delete-warning p {
+  color: #C0C5CE;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 400px;
+  margin: 0 auto;
+}
+
+/* Delete item info section */
+.delete-item-info {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.2rem;
+  margin-bottom: 2rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.delete-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.delete-item-row:last-child {
+  border-bottom: none;
+}
+
+/* Delete action buttons */
+.delete-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  padding-top: 1rem;
+}
+
+.delete-actions .btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #9BA3B0;
+  flex: 1;
+}
+
+.delete-actions .btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #C0C5CE;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.delete-actions .btn-danger {
+  background: linear-gradient(135deg, #EF476F 0%, #E63946 100%);
+  border: none;
+  color: #FFF;
+  flex: 1;
+  font-weight: 700;
+  box-shadow: 0 10px 30px rgba(239, 71, 111, 0.4);
+}
+
+.delete-actions .btn-danger:hover {
+  background: linear-gradient(135deg, #FF6B8B 0%, #FF4D6D 100%);
+  box-shadow: 0 15px 40px rgba(239, 71, 111, 0.6);
+  transform: translateY(-3px);
+}
+
+/* Danger button styling */
+.btn-danger {
+  padding: 1.2rem;
+  background: linear-gradient(135deg, #EF476F 0%, #E63946 100%);
+  border: none;
+  border-radius: 15px;
+  color: #FFF;
+  font-weight: 700;
+  font-size: 17px;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 10px 30px rgba(239, 71, 111, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.btn-danger:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 15px 40px rgba(239, 71, 111, 0.6);
+}
+
+/* Modal close button hover for delete modal */
+.confirm-delete-modal .modal-close:hover {
+  background: rgba(239, 71, 111, 0.2);
+  color: #EF476F;
+  transform: rotate(90deg);
+}
+
+/* Animation for delete modal entrance */
+@keyframes deleteModalEntrance {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.confirm-delete-modal {
+  animation: deleteModalEntrance 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Responsive adjustments for delete button */
+@media (max-width: 768px) {
+  .details-status-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .details-action-buttons {
+    gap: 0.5rem;
+  }
+  
+  .edit-button,
+  .delete-button {
+    padding: 0.5rem 0.8rem;
+    font-size: 13px;
+  }
+  
+  .edit-button i,
+  .delete-button i {
+    font-size: 12px;
+  }
+  
+  .delete-actions {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+  
+  .delete-actions .btn-secondary,
+  .delete-actions .btn-danger {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .details-action-buttons {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .edit-button,
+  .delete-button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .details-status-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .details-badge {
+    align-self: flex-start;
+  }
+  
+  .details-action-buttons {
+    align-self: stretch;
+  }
+}
+
+/* Enhanced hover effect for delete button */
+.delete-button:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 
+    0 8px 25px rgba(239, 71, 111, 0.3),
+    0 4px 15px rgba(239, 71, 111, 0.2);
+}
+
+/* Active state for delete button */
+.delete-button:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 
+    0 4px 15px rgba(239, 71, 111, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Enhanced danger button hover */
+.btn-danger:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 
+    0 15px 40px rgba(239, 71, 111, 0.5),
+    0 8px 25px rgba(239, 71, 111, 0.3);
+}
+
+.btn-danger:active {
+  transform: translateY(-1px) scale(0.98);
+  box-shadow: 
+    0 8px 25px rgba(239, 71, 111, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* Delete modal specific background effects */
+.confirm-delete-modal .modal-box {
+  border: 1px solid rgba(239, 71, 111, 0.2);
+  box-shadow: 
+    0 30px 80px rgba(239, 71, 111, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.confirm-delete-modal .modal-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(239, 71, 111, 0.05) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  border-radius: 30px;
+  z-index: 0;
+}
+
+.confirm-delete-modal .modal-body {
+  position: relative;
+  z-index: 1;
+}
+
+/* ==============================================================================
+   RECOMMENDATION DETAILS MODAL - NEW STYLES
+   ============================================================================== */
+
+/* Recommendation Details Modal */
+.rec-details-modal {
+  max-width: 900px !important;
+  width: 95% !important;
+}
+
+.rec-details-modal .modal-header {
+  background: rgba(0, 168, 232, 0.1);
+  border-bottom: 1px solid rgba(0, 168, 232, 0.2);
+}
+
+.rec-details-modal .modal-title {
+  font-size: 28px !important;
+  font-weight: 800 !important;
+  background: linear-gradient(135deg, #00A8E8 0%, #7B68EE 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  text-shadow: none !important;
+}
+
+/* Tagline styling */
+.details-tagline {
+  margin-bottom: 1.5rem !important;
+  padding-bottom: 1rem !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.details-tagline p {
+  font-style: italic !important;
+  color: #9BA3B0 !important;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  text-align: center !important;
+  margin: 0 !important;
+  padding: 0 1rem !important;
+}
+
+/* Ensure field values for cast and plot summary have proper wrapping */
+.rec-details-modal .details-field .field-value {
+  color: #C0C5CE !important;
+  font-size: 15px !important;
+  line-height: 1.6 !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+}
+
+/* Specifically for cast and plot summary fields to prevent overflow */
+.rec-details-modal .details-field:has(.field-label:contains("Cast:")) .field-value,
+.rec-details-modal .details-field:has(.field-label:contains("Plot Summary:")) .field-value {
+  display: block !important;
+  max-width: 100% !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+/* Action buttons for rec details */
+.rec-action-buttons {
+  display: flex;
+  justify-content: center;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.rec-add-btn {
+  padding: 1rem 2.5rem !important;
+  background: linear-gradient(135deg, #00A8E8 0%, #7B68EE 100%) !important;
+  border: none !important;
+  border-radius: 15px !important;
+  color: #FFF !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  cursor: pointer !important;
+  transition: all 0.3s !important;
+  box-shadow: 0 10px 30px rgba(0, 168, 232, 0.4) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  min-width: 200px !important;
+}
+
+.rec-add-btn:hover {
+  transform: translateY(-3px) scale(1.05) !important;
+  box-shadow: 0 15px 40px rgba(0, 168, 232, 0.6) !important;
+}
+
+/* Recommendation card clickable styling */
+.rec-card {
+  cursor: pointer !important;
+  transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  background: rgba(26, 31, 41, 0.7) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-radius: 20px !important;
+  overflow: hidden !important;
+  position: relative !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  transform-origin: center center !important;
+  margin-top: -2px !important;
+  margin-bottom: 12px !important;
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.rec-card:hover {
+  transform: translateY(-8px) scale(1.03) !important;
+  border-color: rgba(0, 168, 232, 0.3) !important;
+  box-shadow: 
+    0 25px 60px rgba(0, 168, 232, 0.25),
+    0 15px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+  z-index: 10 !important;
+}
+
+.rec-card::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: linear-gradient(135deg, 
+    rgba(255, 255, 255, 0.03) 0%, 
+    transparent 50%,
+    rgba(0, 0, 0, 0.1) 100%) !important;
+  pointer-events: none !important;
+  border-radius: 20px !important;
+}
+
+/* Recommendation card poster */
+.rec-card .movie-poster {
+  width: 100% !important;
+  height: 320px !important;
+  object-fit: cover !important;
+  transition: transform 0.6s ease !important;
+  border-radius: 20px 20px 0 0 !important;
+}
+
+.rec-card:hover .movie-poster {
+  transform: scale(1.05) !important;
+}
+
+/* Recommendation card info */
+.rec-card .movie-info {
+  padding: 1.2rem !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  position: relative !important;
+  z-index: 1 !important;
+  border-radius: 0 0 20px 20px !important;
+  flex-grow: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.rec-card .movie-title {
+  font-size: 17px !important;
+  font-weight: 700 !important;
+  color: #FFF !important;
+  margin-bottom: 0.6rem !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  line-height: 1.3 !important;
+  max-height: 2.6em !important;
+  word-break: break-word !important;
+}
+
+.rec-card .movie-meta {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  color: #9BA3B0 !important;
+  font-size: 14px !important;
+  margin-bottom: 0.8rem !important;
+  opacity: 0.9 !important;
+  flex-wrap: wrap !important;
+}
+
+.rec-card .movie-rating {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  color: #FFB800 !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  margin-bottom: 1rem !important;
+}
+
+/* Loading state for rec details modal */
+.rec-details-modal.loading .modal-body {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 300px !important;
+}
+
+.rec-details-modal.loading .modal-body::after {
+  content: 'Loading details from TMDB...' !important;
+  color: #9BA3B0 !important;
+  font-size: 16px !important;
+  font-style: italic !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.rec-details-modal.loading .modal-body::before {
+  content: '' !important;
+  width: 24px !important;
+  height: 24px !important;
+  border: 3px solid rgba(0, 168, 232, 0.3) !important;
+  border-top-color: #00A8E8 !important;
+  border-radius: 50% !important;
+  animation: spin 1s linear infinite !important;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* TMDB rating display in rec details */
+.rec-details-modal .details-field:has(.field-label:contains("TMDB Rating:")) .field-value {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.rec-details-modal .rating-value {
+  font-weight: 700 !important;
+  color: #FFB800 !important;
+  font-size: 16px !important;
+  margin-left: 4px !important;
+}
+
+/* Popularity field styling */
+.rec-details-modal .details-field:has(.field-label:contains("Popularity:")) .field-value {
+  display: flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+}
+
+/* Section titles in rec details */
+.rec-details-modal .section-title {
+  font-size: 20px !important;
+  color: #FFF !important;
+  margin-bottom: 1rem !important;
+  font-weight: 700 !important;
+  background: linear-gradient(135deg, #FFF 0%, #9BA3B0 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* Details sections spacing */
+.rec-details-modal .details-section {
+  margin-top: 2rem !important;
+  padding-top: 1.5rem !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.rec-details-modal .details-section:first-of-type {
+  margin-top: 1rem !important;
+  padding-top: 0 !important;
+  border-top: none !important;
+}
+
+/* Responsive adjustments for rec details modal */
+@media (max-width: 768px) {
+  .rec-details-modal {
+    max-width: 95% !important;
+    margin: 1rem !important;
+  }
+  
+  .rec-details-modal .details-row {
+    flex-direction: column !important;
+    gap: 1.5rem !important;
+  }
+  
+  .rec-details-modal .details-poster {
+    flex: 0 0 auto !important;
+    max-width: 100% !important;
+    align-self: center !important;
+  }
+  
+  .rec-details-modal .details-poster img {
+    height: 350px !important;
+  }
+  
+  .rec-add-btn {
+    padding: 0.8rem 2rem !important;
+    font-size: 15px !important;
+    min-width: 180px !important;
+  }
+  
+  .rec-card {
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .rec-details-modal .details-poster img {
+    height: 300px !important;
+  }
+  
+  .rec-add-btn {
+    width: 100% !important;
+    min-width: auto !important;
+  }
+  
+  .rec-card .movie-title {
+    font-size: 15px !important;
+  }
+  
+  .rec-card .movie-meta {
+    font-size: 13px !important;
+  }
+  
+  .rec-card .movie-rating {
+    font-size: 14px !important;
+  }
+}
+
+/* Ensure recommendation cards don't interfere with library cards */
+.recommendations-page .movies-grid .rec-card,
+.recommendations-page .movies-grid .movie-card {
+  height: 100% !important;
+}
+
+/* Make sure recommendation cards have proper hover states */
+.recommendations-page .movies-grid .rec-card:hover,
+.recommendations-page .movies-grid .movie-card:hover {
+  z-index: 20 !important;
+}
+
+/* Recommendation page specific grid adjustments */
+.recommendations-page .movies-grid {
+  padding: 0 3rem 3rem !important;
+}
+
+.recommendations-page .movies-grid .rec-card {
+  position: relative !important;
+}
+
+/* Genre pills styling for recommendations page */
+.recommendations-page .genre-pills {
+  display: flex !important;
+  gap: 0.8rem !important;
+  flex-wrap: wrap !important;
+  margin: 1rem 0 !important;
+}
+
+.recommendations-page .genre-pill {
+  background: rgba(0, 168, 232, 0.2) !important;
+  color: #00A8E8 !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 25px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border: 1px solid rgba(0, 168, 232, 0.4) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  box-shadow: 0 4px 15px rgba(0, 168, 232, 0.2) !important;
+}
+
+/* Recommendation section description */
+.recommendations-page .section-header + div {
+  max-width: 1400px !important;
+  margin: 0 auto !important;
+  padding: 0 3rem !important;
+}
+
+/* Recommendation cards - ensure they look different from library cards */
+.rec-card .movie-info {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Add subtle indicator that it's a recommendation */
+.rec-card::after {
+  content: 'TMDB' !important;
+  position: absolute !important;
+  top: 15px !important;
+  left: 15px !important;
+  background: rgba(0, 168, 232, 0.3) !important;
+  color: #00A8E8 !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  padding: 3px 8px !important;
+  border-radius: 12px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  border: 1px solid rgba(0, 168, 232, 0.4) !important;
+  z-index: 5 !important;
+}
+
+/* Hover effect for the TMDB badge */
+.rec-card:hover::after {
+  background: rgba(0, 168, 232, 0.5) !important;
+  color: #FFF !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 168, 232, 0.3) !important;
+}
+
+/* Loading spinner for "Add to Library" button */
+.rec-add-btn.loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.rec-add-btn.loading .spinner {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #FFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Animation for spinner */
+@keyframes spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* Ensure the button text is hidden when loading */
+.rec-add-btn.loading::after {
+  content: "Adding to Library...";
+  color: transparent;
+}
+
+/* ==============================================================================
+   MODAL FOOTER STYLES - Sticky footer for recommendations details modal
+   ============================================================================== */
+
+.rec-details-modal .modal-footer {
+  position: sticky !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  background: rgba(26, 31, 41, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: 1.5rem 2rem !important;
+  z-index: 1000 !important;
+  margin-top: auto !important;
+  border-radius: 0 0 20px 20px !important;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3) !important;
+}
+
+.rec-details-modal .modal-footer-content {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  max-width: 900px !important;
+  margin: 0 auto !important;
+}
+
+/* Adjust modal body to account for sticky footer */
+.rec-details-modal .modal-body {
+  max-height: calc(100vh - 200px) !important; /* Reduced to accommodate footer */
+  overflow-y: auto !important;
+  padding-bottom: 1rem !important;
+}
+
+/* Remove old rec-action-buttons styles since button is now in footer */
+.rec-action-buttons {
+  display: none !important;
+}
+
+/* Ensure modal box has proper height for sticky footer */
+.rec-details-modal.modal-box {
+  display: flex !important;
+  flex-direction: column !important;
+  max-height: 90vh !important;
+  min-height: 400px !important;
+}
+
+/* Footer button styling */
+.rec-details-modal .modal-footer .rec-add-btn {
+  padding: 1rem 3rem !important;
+  background: linear-gradient(135deg, #00A8E8 0%, #7B68EE 100%) !important;
+  border: none !important;
+  border-radius: 15px !important;
+  color: #FFF !important;
+  font-weight: 700 !important;
+  font-size: 16px !important;
+  cursor: pointer !important;
+  transition: all 0.3s !important;
+  box-shadow: 0 10px 30px rgba(0, 168, 232, 0.4) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+  min-width: 250px !important;
+  display: block !important;
+  margin: 0 auto !important;
+}
+
+.rec-details-modal .modal-footer .rec-add-btn:hover {
+  transform: translateY(-3px) scale(1.05) !important;
+  box-shadow: 0 15px 40px rgba(0, 168, 232, 0.6) !important;
+}
+
+/* Responsive adjustments for footer */
+@media (max-width: 768px) {
+  .rec-details-modal .modal-footer {
+    padding: 1rem !important;
+  }
+  
+  .rec-details-modal .modal-footer .rec-add-btn {
+    padding: 0.8rem 2rem !important;
+    min-width: 200px !important;
+    font-size: 15px !important;
+  }
+  
+  .rec-details-modal .modal-body {
+    max-height: calc(100vh - 180px) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .rec-details-modal .modal-footer .rec-add-btn {
+    width: 100% !important;
+    min-width: auto !important;
+  }
+}
+
+/* ==============================================================================
+   USER MENU OVERLAY & GLASSMORPHISM STYLING
+   ============================================================================== */
+
+.user-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 10000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 80px 20px 20px;
+  opacity: 0;
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  to {
+    opacity: 1;
+  }
+}
+
+.user-menu {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.05)
+  );
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  padding: 2rem;
+  min-width: 320px;
+  max-width: 400px;
+  box-shadow: 
+    0 8px 32px 0 rgba(0, 0, 0, 0.37),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  position: relative;
+  animation: slideInDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top right;
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.user-menu-header {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-menu-greeting {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.user-menu-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #00A8E8 0%, #06D6A0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+}
+
+.user-menu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration: none;
+}
+
+.user-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateX(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.user-menu-item.logout {
+  background: rgba(239, 71, 111, 0.1);
+  border-color: rgba(239, 71, 111, 0.3);
+  color: #EF476F;
+}
+
+.user-menu-item.logout:hover {
+  background: rgba(239, 71, 111, 0.2);
+  border-color: rgba(239, 71, 111, 0.4);
+  box-shadow: 0 4px 16px rgba(239, 71, 111, 0.3);
+}
+
+.user-menu-item i {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+
+.user-menu-item.logout i {
+  color: #EF476F;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .user-menu-overlay {
+    padding: 70px 16px 16px;
+  }
+  
+  .user-menu {
+    min-width: 280px;
+    padding: 1.5rem;
+  }
+  
+  .user-menu-name {
+    font-size: 20px;
+  }
+  
+  .user-menu-item {
+    padding: 0.875rem 1rem;
+    font-size: 15px;
+  }
+}
+
+/* Cursor pointer for nav icon */
+.nav-icon {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.nav-icon:hover {
+  transform: scale(1.1);
+  color: #00A8E8;
+}
+
+/* ==============================================================================
+   FEATURED SECTION - FIXED
+   ============================================================================== */
+.featured-section {
+  width: 100vw; /* Use viewport width */
+  min-height: 630px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+  margin-top: 0;
+  margin-left: calc(-50vw + 50%); /* Pull section to full viewport width */
+  overflow: hidden;
+  transition: background-image 0.5s ease-in-out;
+  box-sizing: border-box;
+}
+
+.featured-container {
+  display: grid;
+  grid-template-columns: 40% 60%;
+  gap: 3rem;
+  padding: 4rem 5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  align-items: center;
+  min-height: 600px;
+  box-sizing: border-box;
+}
+
+.featured-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  z-index: 2;
+  padding-left: 2rem; /* Add internal padding instead */
+}
+
+.featured-logo {
+  max-width: 300px;
+  width: 100%;
+  height: auto;
+  margin-bottom: 1rem;
+  filter: drop-shadow(0 4px 20px rgba(0, 0, 0, 0.5));
+}
+
+.featured-title-fallback {
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #FFF;
+  margin: 0;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+}
+
+.featured-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.featured-year,
+.featured-duration,
+.featured-genre {
+  font-weight: 600;
+  color: #FFF;
+  font-size: 2rem;
+}
+
+.featured-dot {
+  color: #00A8E8;
+}
+
+.featured-plot {
+  font-size: 1.5rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 600px;
+  margin: 0;
+}
+
+.featured-carousel {
+  display: flex;
+  gap: 1rem;
+  perspective: 1000px;
+  justify-content: flex-end;
+  padding-right: 2rem; /* Add internal padding instead */
+}
+
+.featured-poster-item {
+  width: 200px;
+  height: 300px;
+  border-radius: 16px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  opacity: 0.5;
+  transform: scale(0.85) translateY(20px);
+}
+
+.featured-poster-item:hover {
+  opacity: 0.8;
+  transform: scale(0.9) translateY(10px);
+}
+
+.featured-poster-item.active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  box-shadow: 0 20px 60px rgba(0, 168, 232, 0.4);
+}
+
+.featured-poster-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .featured-container {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 3rem 2rem;
+  }
+  
+  .featured-content {
+    padding-left: 0;
+  }
+  
+  .featured-carousel {
+    justify-content: center;
+    overflow-x: auto;
+    padding: 1rem 0;
+    padding-right: 0;
+  }
+  
+  .featured-logo {
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .featured-section {
+    min-height: 500px;
+  }
+  
+  .featured-container {
+    padding: 2rem 1.5rem;
+  }
+  
+  .featured-logo {
+    max-width: 250px;
+  }
+  
+  .featured-title-fallback {
+    font-size: 2.5rem;
+  }
+  
+  .featured-plot {
+    font-size: 1rem;
+  }
+  
+  .featured-actions {
+    flex-direction: column;
+  }
+  
+  .featured-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .featured-poster-item {
+    width: 150px;
+    height: 225px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .featured-container {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 4rem 3rem;
+  }
+  
+  .featured-carousel {
+    justify-content: center;
+    overflow-x: auto;
+    padding: 1rem 0;
+  }
+  
+  .featured-logo {
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .featured-section {
+    min-height: 500px;
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+  }
+  
+  .featured-container {
+    padding: 2rem 1.5rem;
+  }
+  
+  .featured-logo {
+    max-width: 250px;
+  }
+  
+  .featured-title-fallback {
+    font-size: 2.5rem;
+  }
+  
+  .featured-plot {
+    font-size: 1rem;
+  }
+  
+  .featured-actions {
+    flex-direction: column;
+  }
+  
+  .featured-btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .featured-poster-item {
+    width: 150px;
+    height: 225px;
+  }
+}
+
+.field-error {
+  color: #EF476F;
+  font-size: 12px;
+  margin-top: 4px;
+  display: none;
+}
+
+.form-group .form-control:focus {
+  border-color: rgba(0, 168, 232, 0.5) !important;
+  box-shadow: 0 0 0 2px rgba(0, 168, 232, 0.2) !important;
+}

@@ -1,0 +1,26 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: plotwist-db
+    env: docker
+    plan: free
+    region: oregon
+    databaseName: plotwist_db
+    databaseUser: plotwist_user
+    ipAllowList: []
+
+  # Shiny Web Service
+  - type: web
+    name: plotwist-app
+    env: docker
+    region: oregon
+    plan: free
+    buildCommand: chmod +x install_packages.sh && ./install_packages.sh
+    startCommand: R -e "shiny::runApp('app_postgresql.R', host='0.0.0.0', port=as.numeric(Sys.getenv('PORT', 8080)))"
+    envVars:
+      - key: R_LIBS_USER
+        value: /opt/render/project/src/R_libs
+      - key: DATABASE_URL
+        fromDatabase:
+          name: plotwist-db
+          property: connectionString
