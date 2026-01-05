@@ -45,7 +45,7 @@ get_db_connection <- function() {
         port = 5432,
         dbname = "plotwist_db",
         user = "postgres",
-        password = "Plotwist@20264"
+        password = "Plotwist@2026"
       )
       message("4. Local connection SUCCESS!")
       return(con)
@@ -494,38 +494,93 @@ TV_GENRE_TO_TMDB_ID <- list(
 # ==============================================================================
 
 ui <- fluidPage(
+  title = "Plotwist | Turn Your Watching Into a Plotwist",
   tags$head(
     includeCSS("www/style.css"),
+    
+    # Favicon
+    tags$link(rel = "icon", type = "image/x-icon", href = "favicon.ico"),
+    tags$link(rel = "apple-touch-icon", sizes = "180x180", href = "favicon.png"),
+    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "favicon.png"),
+    tags$link(rel = "icon", type = "image/png", sizes = "16x16", href = "favicon.png"),
     
     tags$script(HTML("
       document.addEventListener('DOMContentLoaded', function() {
         console.log('DOM loaded - setting up logo animation');
         
-        setTimeout(function() {
-          const flipContainer = document.querySelector('.logo-flip-container');
-          
-          if (!flipContainer) {
-            console.error('Logo flip container not found');
-            return;
-          }
-          
-          console.log('Found flip container, starting animation...');
-          
-          let isFlipped = false;
-          
-          function flipLogo() {
-            if (isFlipped) {
-              flipContainer.style.transform = 'rotateY(0deg)';
-            } else {
-              flipContainer.style.transform = 'rotateY(180deg)';
-            }
-            isFlipped = !isFlipped;
-          }
-          
-          flipLogo();
-          setInterval(flipLogo, 3000);
-          
-        }, 1000);
+        function initLogoFlip() {
+  const flipContainer = document.querySelector('.logo-flip-container');
+  
+  if (!flipContainer) {
+    console.log('Logo flip container not found, retrying...');
+    return false;
+  }
+  
+  console.log('Logo flip container found, initializing animation');
+  
+  let isFlipped = false;
+  
+  function flipLogo() {
+    if (isFlipped) {
+      flipContainer.style.transform = 'rotateY(0deg)';
+    } else {
+      flipContainer.style.transform = 'rotateY(180deg)';
+    }
+    isFlipped = !isFlipped;
+  }
+  
+  // Start animation
+  setTimeout(flipLogo, 500);
+  setInterval(flipLogo, 3000);
+  
+  return true;
+}
+
+// Try multiple times to initialize logo flip
+function tryInitLogoFlip(maxAttempts = 10, delay = 300) {
+  let attempts = 0;
+  
+  const attemptInit = () => {
+    attempts++;
+    console.log('Logo flip init attempt', attempts);
+    
+    if (initLogoFlip()) {
+      console.log('Logo flip initialized successfully');
+      return;
+    }
+    
+    if (attempts < maxAttempts) {
+      setTimeout(attemptInit, delay);
+    } else {
+      console.log('Logo flip initialization failed after', maxAttempts, 'attempts');
+      // Add CSS fallback animation as last resort
+      const flipContainer = document.querySelector('.logo-flip-container');
+      if (flipContainer) {
+        flipContainer.classList.add('flip-animation');
+      }
+    }
+  };
+  
+  attemptInit();
+}
+
+// Initialize on DOM load
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM loaded - starting logo animation setup');
+  tryInitLogoFlip();
+});
+
+// Also try when Shiny connects
+$(document).on('shiny:connected', function() {
+  console.log('Shiny connected - starting logo animation setup');
+  setTimeout(() => tryInitLogoFlip(), 500);
+});
+
+// Backup: Try after full page load
+window.addEventListener('load', function() {
+  console.log('Window loaded - final logo animation attempt');
+  setTimeout(() => tryInitLogoFlip(5, 500), 1000);
+});
         
         // ==============================================================================
         // NAVIGATION SCROLL STATE MANAGEMENT
