@@ -28,13 +28,17 @@ get_db_connection <- function() {
     
     if (db_url != "") {
       message("3. Using PRODUCTION database")
-      message("4. Full URL (first 50 chars): ", substr(db_url, 1, 50))
-      con <- dbConnect(Postgres(), dbname = db_url)
-      message("5. Connection SUCCESS!")
+      
+      # For Render, just pass the URL directly to dbConnect
+      con <- dbConnect(RPostgres::Postgres(), 
+                       dbname = db_url,
+                       sslmode = "require",
+                       sslrootcert = system.file("certs/ca-certificates.crt", package = "RPostgres"))
+      
+      message("4. PRODUCTION connection SUCCESS!")
       return(con)
     } else {
-      message("3. Using LOCAL database (DATABASE_URL is empty!)")
-      message("4. Attempting local connection...")
+      message("3. Using LOCAL database")
       con <- dbConnect(
         Postgres(),
         host = "localhost",
@@ -43,11 +47,59 @@ get_db_connection <- function() {
         user = "postgres",
         password = "Plotwist@20264"
       )
-      message("5. Local connection SUCCESS!")
+      message("4. Local connection SUCCESS!")
       return(con)
     }
   }, error = function(e) {
     message("❌ ERROR in get_db_connection(): ", e$message)
+    message("Trying alternative connection method...")
+    
+    # Try alternative method for Render
+    tryCatch({
+      db_url <- Sys.getenv("DATABASE_URL")
+      if (db_url != "") {
+        # Parse the URL manually
+        library(stringr)
+        
+        # Extract components
+        pattern <- "postgresql://([^:]+):([^@]+)@([^/]+)/(.+)"
+        matches <- str_match(db_url, pattern)
+        
+        if (!is.na(matches[1,1])) {
+          user <- matches[1,2]
+          password <- matches[1,3]
+          host_port <- matches[1,4]
+          dbname <- matches[1,5]
+          
+          # Check if port is included
+          host_parts <- str_split(host_port, ":")[[1]]
+          if (length(host_parts) == 2) {
+            host <- host_parts[1]
+            port <- as.numeric(host_parts[2])
+          } else {
+            host <- host_parts[1]
+            port <- 5432
+          }
+          
+          message("Alternative connection - Host:", host, " Port:", port, " DB:", dbname)
+          
+          con <- dbConnect(
+            Postgres(),
+            host = host,
+            port = port,
+            dbname = dbname,
+            user = user,
+            password = password,
+            sslmode = "require"
+          )
+          message("Alternative connection SUCCESS!")
+          return(con)
+        }
+      }
+    }, error = function(e2) {
+      message("❌ Alternative method also failed: ", e2$message)
+    })
+    
     return(NULL)
   })
 }
