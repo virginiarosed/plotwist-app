@@ -1,14 +1,14 @@
 FROM rocker/shiny:4.3.2
 
-# Install PostgreSQL dependencies and R packages
-RUN apt-get update && apt-get install -y libpq-dev && \
-    R -e "install.packages(c('shiny', 'shinyjs', 'DBI', 'RPostgres', 'dplyr', 'lubridate', 'httr', 'jsonlite', 'plotly', 'shinyWidgets', 'bcrypt'), repos='https://cloud.r-project.org/')"
+# Install PostgreSQL support
+RUN apt-get update && apt-get install -y libpq-dev
 
-# Copy app file
-COPY app.R /app.R
+# Install R packages
+RUN R -e "install.packages(c('shiny', 'shinyjs', 'DBI', 'RPostgres', 'dplyr', 'lubridate', 'httr', 'jsonlite', 'plotly', 'shinyWidgets', 'bcrypt'), repos='https://cloud.r-project.org/')"
 
-# Expose port
+# Copy ALL files
+COPY . .
+
 EXPOSE 8080
 
-# Run app
 CMD ["R", "-e", "shiny::runApp('app.R', host='0.0.0.0', port=8080)"]
