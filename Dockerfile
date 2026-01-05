@@ -24,8 +24,11 @@ RUN R -e "install.packages(c('shiny', 'shinyjs', 'DBI', 'RPostgres', 'dplyr', 'l
 # Copy app files
 COPY . /srv/shiny-server/
 
+# Set working directory to where app.R is
+WORKDIR /srv/shiny-server
+
 # Expose port
 EXPOSE 8080
 
-# Run app
-CMD ["R", "-e", "shiny::runApp('/srv/shiny-server/app_postgresql.R', host='0.0.0.0', port=8080)"]
+# Run app from the current directory
+CMD ["R", "-e", "shiny::runApp(host='0.0.0.0', port=8080)"]
