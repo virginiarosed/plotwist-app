@@ -15,20 +15,18 @@ RUN apt-get update && apt-get install -y \
     libjpeg-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Set R library path
-ENV R_LIBS_USER=/usr/local/lib/R/site-library
-
 # Install R packages
-RUN R -e "install.packages(c('shiny', 'shinyjs', 'DBI', 'RPostgres', 'dplyr', 'lubridate', 'httr', 'jsonlite', 'plotly', 'shinyWidgets', 'bcrypt'), repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages(c('shiny', 'shinyjs', 'DBI', 'RPostgres', 'dplyr', 'lubridate', 'httr', 'jsonlite', 'plotly', 'shinyWidgets', 'bcrypt'), repos='https://cloud.r-project.org/', dependencies=TRUE)"
 
 # Set working directory
-WORKDIR /srv/shiny-server
+WORKDIR /app
 
 # Copy app files
-COPY . /srv/shiny-server/
+COPY app.R /app/
+COPY www /app/www
 
 # Expose port
 EXPOSE 8080
 
-# Run app with correct filename
-CMD ["R", "-e", "shiny::runApp('/srv/shiny-server/app.R', host='0.0.0.0', port=8080)"]
+# Run app
+CMD ["R", "-e", "shiny::runApp('/app/app.R', host='0.0.0.0', port=8080)"]

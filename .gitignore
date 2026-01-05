@@ -4,6 +4,6 @@
 .Ruserdata
 .Renviron
 *.Rproj
-.DS_Store
-__pycache__/
-*.pyc
+.Rprofile
+renv/
+renv.lock
