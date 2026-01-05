@@ -20,28 +20,34 @@ library(bcrypt)
 
 get_db_connection <- function() {
   tryCatch({
-    # Check if we're in production (Render) or local
     db_url <- Sys.getenv("DATABASE_URL")
     
+    message("=== DATABASE CONNECTION DEBUG ===")
+    message("1. DATABASE_URL is set: ", db_url != "")
+    message("2. DATABASE_URL preview: ", ifelse(db_url != "", substr(db_url, 1, 30), "EMPTY"))
+    
     if (db_url != "") {
-      # PRODUCTION (Render): Use DATABASE_URL directly
-      message("Connecting to RENDER database...")
-      dbConnect(Postgres(), dbname = db_url)
-      
+      message("3. Using PRODUCTION database")
+      message("4. Full URL (first 50 chars): ", substr(db_url, 1, 50))
+      con <- dbConnect(Postgres(), dbname = db_url)
+      message("5. Connection SUCCESS!")
+      return(con)
     } else {
-      # LOCAL DEVELOPMENT: Use your local PostgreSQL
-      message("Connecting to LOCAL database...")
-      dbConnect(
+      message("3. Using LOCAL database (DATABASE_URL is empty!)")
+      message("4. Attempting local connection...")
+      con <- dbConnect(
         Postgres(),
         host = "localhost",
         port = 5432,
         dbname = "plotwist_db",
         user = "postgres",
-        password = "Plotwist@20264"  # Your LOCAL password
+        password = "Plotwist@20264"
       )
+      message("5. Local connection SUCCESS!")
+      return(con)
     }
   }, error = function(e) {
-    message("Database connection error: ", e$message)
+    message("❌ ERROR in get_db_connection(): ", e$message)
     return(NULL)
   })
 }
@@ -1632,6 +1638,16 @@ function updateMovieDurationFields(isEditModal = false) {
 # ==============================================================================
 
 server <- function(input, output, session) {
+  
+  # Debug: Show environment
+  # Debug: Show environment
+  observe({
+    db_url <- Sys.getenv("DATABASE_URL")
+    message("=== DEBUG ===")
+    message("DATABASE_URL exists: ", db_url != "")
+    message("DATABASE_URL value: ", ifelse(db_url != "", substr(db_url, 1, 30), "EMPTY"))
+    message("=== END DEBUG ===")
+  })
   
   rv <- reactiveValues(
     # Authentication state
