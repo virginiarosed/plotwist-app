@@ -20,60 +20,27 @@ library(bcrypt)
 
 get_db_connection <- function() {
   tryCatch({
-    # Check if we're in production (Render) or local environment
-    if (Sys.getenv("DATABASE_URL") != "") {
-      # Production: Parse DATABASE_URL from Render
-      # Render provides DATABASE_URL in format: postgres://user:password@host:port/database
-      db_url <- Sys.getenv("DATABASE_URL")
+    # Check if we're in production (Render) or local
+    db_url <- Sys.getenv("DATABASE_URL")
+    
+    if (db_url != "") {
+      # PRODUCTION (Render): Use DATABASE_URL directly
+      message("Connecting to RENDER database...")
+      dbConnect(Postgres(), dbname = db_url)
       
-      # More robust parsing using gsub and regex
-      # Extract components from connection string
-      db_params <- db_url |>
-        gsub("^postgres://", "", x = _) |>
-        strsplit("@") |>
-        unlist()
-      
-      if (length(db_params) == 2) {
-        # User and password (first part before @)
-        user_pass <- strsplit(db_params[1], ":")[[1]]
-        user <- user_pass[1]
-        password <- user_pass[2]
-        
-        # Host, port and database (second part after @)
-        host_port_db <- strsplit(db_params[2], "/")[[1]]
-        
-        # Handle port if present
-        host_port <- strsplit(host_port_db[1], ":")[[1]]
-        host <- host_port[1]
-        port <- ifelse(length(host_port) > 1, as.integer(host_port[2]), 5432L)
-        dbname <- host_port_db[2]
-        
-        dbConnect(
-          Postgres(),
-          host = host,
-          port = port,
-          dbname = dbname,
-          user = user,
-          password = password,
-          sslmode = 'require'
-        )
-      } else {
-        # Fallback: Use the URL directly (some PostgreSQL drivers support this)
-        dbConnect(Postgres(), dbname = db_url)
-      }
     } else {
-      # Local development
+      # LOCAL DEVELOPMENT: Use your local PostgreSQL
+      message("Connecting to LOCAL database...")
       dbConnect(
         Postgres(),
-        host = Sys.getenv("DB_HOST", "localhost"),
-        port = as.integer(Sys.getenv("DB_PORT", "5432")),
-        dbname = Sys.getenv("DB_NAME", "plotwist_db"),
-        user = Sys.getenv("DB_USER", "postgres"),
-        password = Sys.getenv("DB_PASSWORD", "Plotwist@2026")  # Your actual password
+        host = "localhost",
+        port = 5432,
+        dbname = "plotwist_db",
+        user = "postgres",
+        password = "Plotwist@20264"  # Your LOCAL password
       )
     }
   }, error = function(e) {
-    # Don't show notification here - let the app handle it gracefully
     message("Database connection error: ", e$message)
     return(NULL)
   })

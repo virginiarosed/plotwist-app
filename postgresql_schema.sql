@@ -27,7 +27,7 @@ CREATE TABLE movies_series (
     rating INTEGER DEFAULT 0 CHECK (rating >= 0 AND rating <= 5),
     review TEXT DEFAULT NULL,
     director VARCHAR(255) DEFAULT NULL,
-    "cast" TEXT DEFAULT NULL,
+    cast_members TEXT DEFAULT NULL,
     plot_summary TEXT DEFAULT NULL,
     poster_url TEXT DEFAULT NULL,
     total_episodes INTEGER DEFAULT 0,
