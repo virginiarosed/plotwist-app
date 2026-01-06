@@ -117,7 +117,7 @@ FEATURED_CONTENT <- list(
     title = "Avengers: Endgame",
     logo_url = "https://image.tmdb.org/t/p/original/pjZSBgMDYjEhyanp8aahfE1KcAn.png",
     poster_url = "https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
-    backdrop_url = "https://image.tmdb.org/t/p/original/3OCKwKnZ6fchTCZc8E7bU7Zzwc1.jpg",
+    backdrop_url = "https://image.tmdb.org/t/p/original/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg",
     year = "2019",
     duration = "3h 1m",
     genre = "Action",
@@ -2384,10 +2384,12 @@ server <- function(input, output, session) {
     }
   })
   
-  # NEW: Handle movie card clicks to show details
   observeEvent(input$show_item_details, {
     if (!is.null(input$show_item_details) && input$show_item_details != "") {
       item_id <- as.numeric(input$show_item_details)
+      
+      cat("=== DETAILS MODAL DEBUG ===\n")
+      cat("Item ID:", item_id, "\n")
       
       con <- get_db_connection()
       if (!is.null(con)) {
@@ -2396,18 +2398,31 @@ server <- function(input, output, session) {
           item <- dbGetQuery(con, query)
           dbDisconnect(con)
           
+          cat("Query returned", nrow(item), "row(s)\n")
+          
           if (nrow(item) == 1) {
+            cat("Item title:", item$title[1], "\n")
+            cat("Watch status:", item$watch_status[1], "\n")
+            cat("Date watched:", item$date_watched[1], "\n")
+            cat("Date watched class:", class(item$date_watched[1]), "\n")
+            
             rv$selected_item <- item[1, ]
             rv$show_details_modal <- TRUE
+            
+            cat("Details modal should now be visible\n")
           } else {
             showNotification("Item not found!", type = "error")
           }
         }, error = function(e) {
+          cat("ERROR in show_item_details:", e$message, "\n")
           showNotification(paste("Error fetching item:", e$message), type = "error")
           if (!is.null(con)) dbDisconnect(con)
         })
+      } else {
+        cat("Failed to get database connection\n")
       }
     }
+    cat("=== END DEBUG ===\n")
   })
   
   # Update navigation button active state
@@ -3914,15 +3929,27 @@ server <- function(input, output, session) {
       progress_color <- "#9BA3B0"
     }
     
-    # Format date added
-    date_added <- if (!is.na(item$date_added)) {
-      format(as.Date(item$date_added), "%B %d, %Y")
-    } else "Unknown"
+    # Format date added - FIXED for PostgreSQL
+    date_added <- tryCatch({
+      if (!is.na(item$date_added) && !is.null(item$date_added)) {
+        format(as.Date(item$date_added), "%B %d, %Y")
+      } else {
+        "Unknown"
+      }
+    }, error = function(e) {
+      "Unknown"
+    })
     
-    # Format date watched if available
-    date_watched <- if (!is.na(item$date_watched) && item$date_watched != "") {
-      format(as.Date(item$date_watched), "%B %d, %Y")
-    } else "Not watched yet"
+    # Format date watched if available - FIXED for PostgreSQL
+    date_watched <- tryCatch({
+      if (!is.na(item$date_watched) && !is.null(item$date_watched) && item$date_watched != "") {
+        format(as.Date(item$date_watched), "%B %d, %Y")
+      } else {
+        "Not watched yet"
+      }
+    }, error = function(e) {
+      "Not watched yet"
+    })
     
     # Rating stars
     rating_value <- ifelse(is.na(item$rating), 0, item$rating)
@@ -4649,10 +4676,10 @@ server <- function(input, output, session) {
       cat("total_episodes_watched:", total_episodes_watched, "\n")
       cat("Query:", query, "\n\n")
       
-      dbExecute(con, query)
+      result <- dbGetQuery(con, paste(query, "RETURNING id"))
+      item_id <- result$id[1]
       
       if (input$modal_status == "Watched") {
-        item_id <- dbGetQuery(con, "SELECT LAST_INSERT_ID() as id")$id
         history_query <- sprintf(
           "INSERT INTO watch_history (movie_id, watch_date) VALUES (%d, '%s')",
           item_id, Sys.Date()
@@ -4956,7 +4983,7 @@ server <- function(input, output, session) {
         check_query <- sprintf("SELECT COUNT(*) as count FROM watch_history WHERE movie_id = %d", item_id)
         count_result <- dbGetQuery(con, check_query)
         
-        if (count_result$count == 0) {
+        if (count_result$count[1] == 0) {
           history_query <- sprintf(
             "INSERT INTO watch_history (movie_id, watch_date) VALUES (%d, '%s')",
             item_id, Sys.Date()
@@ -5161,19 +5188,13 @@ server <- function(input, output, session) {
                           tags$p(empty_msg$message)
                  )
                } else {
-                 # Display 10 items, duplicate for seamless loop
-                 recent_items <- head(items, 10)
+                 # Display only 5 items in Recently Added section
+                 recent_items <- head(items, 5)
                  if (nrow(recent_items) > 0) {
                    tags$div(class = "carousel-wrapper",
                             tags$div(class = "carousel-track",
-                                     # First set of cards
-                                     lapply(1:nrow(recent_items), function(i) {
-                                       tags$div(class = "carousel-card",
-                                                render_movie_card(recent_items[i, ])
-                                       )
-                                     }),
-                                     # Duplicate set for seamless loop
-                                     lapply(1:nrow(recent_items), function(i) {
+                                     # Display exactly 5 cards
+                                     lapply(1:min(5, nrow(recent_items)), function(i) {
                                        tags$div(class = "carousel-card",
                                                 render_movie_card(recent_items[i, ])
                                        )
@@ -6421,11 +6442,11 @@ server <- function(input, output, session) {
     
     progress_html <- NULL
     
-    # For TV Series - FIXED progress calculation
-    if (item$media_type == "TV Series" && !is.na(item$total_episodes) && item$total_episodes > 0) {
-      total_episodes_watched <- ifelse(is.na(item$total_episodes_watched) || item$total_episodes_watched < 0, 
+    # For TV Series - FIXED progress calculation with NULL handling
+    if (item$media_type == "TV Series" && !is.na(item$total_episodes) && !is.null(item$total_episodes) && item$total_episodes > 0) {
+      total_episodes_watched <- ifelse(is.na(item$total_episodes_watched) || is.null(item$total_episodes_watched) || item$total_episodes_watched < 0, 
                                        0, item$total_episodes_watched)
-      total_episodes <- ifelse(is.na(item$total_episodes) || item$total_episodes < 1, 
+      total_episodes <- ifelse(is.na(item$total_episodes) || is.null(item$total_episodes) || item$total_episodes < 1, 
                                1, item$total_episodes)
       
       progress <- round((total_episodes_watched / total_episodes) * 100)
@@ -6452,11 +6473,11 @@ server <- function(input, output, session) {
                                 )
       )
     }
-    # For Movies - Show duration progress
-    else if (item$media_type == "Movie" && !is.na(item$total_duration) && item$total_duration > 0) {
-      watched_duration <- ifelse(is.na(item$watched_duration) || item$watched_duration < 0, 
+    # For Movies - Show duration progress with NULL handling
+    else if (item$media_type == "Movie" && !is.na(item$total_duration) && !is.null(item$total_duration) && item$total_duration > 0) {
+      watched_duration <- ifelse(is.na(item$watched_duration) || is.null(item$watched_duration) || item$watched_duration < 0, 
                                  0, item$watched_duration)
-      total_duration <- ifelse(is.na(item$total_duration) || item$total_duration < 1, 
+      total_duration <- ifelse(is.na(item$total_duration) || is.null(item$total_duration) || item$total_duration < 1, 
                                1, item$total_duration)
       
       progress <- round((watched_duration / total_duration) * 100)

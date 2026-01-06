@@ -1242,39 +1242,6 @@ input[type='number'] {
   transform: translateX(5px) !important;
 }
 
-/* ==============================================================================
-   RECOMMENDATIONS EMPTY STATE - SPECIFIC STYLING
-   ============================================================================== */
-
-.rec-empty-state {
-  margin: 6rem auto !important;
-  padding: 7rem 3rem !important;
-  background: linear-gradient(135deg, 
-    rgba(26, 31, 41, 0.85) 0%, 
-    rgba(15, 20, 30, 0.95) 100%) !important;
-  border: 2px solid rgba(0, 168, 232, 0.2) !important;
-  box-shadow: 
-    0 25px 80px rgba(0, 0, 0, 0.5),
-    0 10px 40px rgba(0, 168, 232, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
-}
-
-.rec-empty-state h3 {
-  font-size: 30px !important;
-  margin-bottom: 2rem !important;
-  background: linear-gradient(135deg, #FFF 0%, #9BA3B0 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
-}
-
-.rec-empty-state p {
-  font-size: 18px !important;
-  line-height: 1.7 !important;
-  max-width: 650px !important;
-  color: #C0C5CE !important;
-}
-
 /* Empty State - Enhanced */
 .empty-state {
   text-align: center;
@@ -2408,9 +2375,8 @@ input[type='number'] {
 
 .carousel-track {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 2rem;
-  /* Removed animation properties */
+  grid-template-columns: repeat(5, minmax(200px, 1fr));
+  gap: 1.5rem;
   width: 100%;
 }
 
@@ -2419,8 +2385,8 @@ input[type='number'] {
 }
 
 .carousel-card {
-  min-width: 240px;
-  max-width: 240px;
+  min-width: 200px;
+  max-width: 100%;
   flex-shrink: 0;
 }
 
