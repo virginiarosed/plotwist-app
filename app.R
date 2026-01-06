@@ -649,76 +649,310 @@ window.addEventListener('load', function() {
         window.addEventListener('scroll', checkScrollPosition);
         checkScrollPosition();
         
-        // ==============================================================================
-        // FEATURED CAROUSEL FUNCTIONALITY - NEW
-        // ==============================================================================
+// ==============================================================================
+// LAYERED CAROUSEL FUNCTIONALITY - UPDATED (Client-side only)
+// ==============================================================================
+
+let currentFeaturedIndex = 0;
+let featuredAutoAdvance = null;
+
+function initFeaturedCarousel() {
+  const featuredItems = document.querySelectorAll('.featured-poster-item');
+  if (featuredItems.length === 0) return;
+  
+  // Stop any existing auto-advance
+  if (featuredAutoAdvance) {
+    clearInterval(featuredAutoAdvance);
+  }
+  
+  // Function to update carousel positions based on active index
+function updateCarouselPositions(activeIndex) {
+  const totalItems = featuredItems.length;
+  
+  // Batch DOM updates for better performance
+  requestAnimationFrame(() => {
+    for (let i = 0; i < totalItems; i++) {
+      const item = featuredItems[i];
+      let relativePosition;
+      
+      // Calculate relative position in the 5-position display
+      if (i === activeIndex) {
+        relativePosition = 3; // Center position
+      } else {
+        // Calculate the circular difference
+        let diff = (i - activeIndex + totalItems) % totalItems;
         
-        let currentFeaturedIndex = 0;
-        let featuredAutoAdvance = null;
-        
-        function initFeaturedCarousel() {
-          const featuredItems = document.querySelectorAll('.featured-poster-item');
-          if (featuredItems.length === 0) return;
-          
-          // Stop any existing auto-advance
-          if (featuredAutoAdvance) {
-            clearInterval(featuredAutoAdvance);
+        // Map to positions 1,2,4,5 based on distance
+        if (diff === 1 || diff === totalItems - 1) {
+          // Adjacent items
+          if (diff === 1) {
+            relativePosition = 4; // Right inner
+          } else {
+            relativePosition = 2; // Left inner
           }
-          
-          function updateFeaturedDisplay(index) {
-            // Update active poster
-            featuredItems.forEach((item, i) => {
-              item.classList.remove('active');
-              if (i === index) {
-                item.classList.add('active');
-              }
-            });
-            
-            // Send to Shiny to update content
-            Shiny.setInputValue('featured_index', index, {priority: 'event'});
+        } else if (diff === 2 || diff === totalItems - 2) {
+          // Two steps away
+          if (diff === 2) {
+            relativePosition = 5; // Rightmost
+          } else {
+            relativePosition = 1; // Leftmost
           }
-          
-          // Click handlers for featured posters
-          featuredItems.forEach((item, index) => {
-            item.addEventListener('click', function() {
-              currentFeaturedIndex = index;
-              updateFeaturedDisplay(index);
-              
-              // Reset auto-advance timer
-              if (featuredAutoAdvance) {
-                clearInterval(featuredAutoAdvance);
-              }
-              featuredAutoAdvance = setInterval(function() {
-                if (featuredItems.length > 0) {
-                  currentFeaturedIndex = (currentFeaturedIndex + 1) % featuredItems.length;
-                  updateFeaturedDisplay(currentFeaturedIndex);
-                }
-              }, 5000);
-            });
-          });
-          
-          // Initialize first item
-          updateFeaturedDisplay(currentFeaturedIndex);
-          
-          // Auto-advance featured carousel every 5 seconds
-          featuredAutoAdvance = setInterval(function() {
-            if (featuredItems.length > 0) {
-              currentFeaturedIndex = (currentFeaturedIndex + 1) % featuredItems.length;
-              updateFeaturedDisplay(currentFeaturedIndex);
-            }
-          }, 5000);
+        } else {
+          // For more than 5 items, hide the rest
+          relativePosition = 0; // Hidden
+          item.style.display = 'none';
+          continue;
         }
+      }
+      
+      item.style.display = 'block';
+      
+      // Remove all position classes first
+      item.classList.remove('pos-1', 'pos-2', 'pos-3', 'pos-4', 'pos-5');
+      
+      // Add new position class with a slight delay for smoother transition
+      setTimeout(() => {
+        item.classList.add(`pos-${relativePosition}`);
+      }, 10 * Math.abs(i - activeIndex)); // Staggered delay for cascade effect
+    }
+  });
+  
+  // Update the background image and content
+  updateFeaturedContent(activeIndex);
+}
+  
+  // Function to update featured content with smooth transitions (carousel stays visible)
+function updateFeaturedContent(index) {
+  const featuredSection = document.querySelector('.featured-section');
+  const featuredContent = document.querySelector('.featured-content');
+  
+  if (!featuredSection || !featuredContent) return;
+  
+  // Get data from data attributes
+  const featuredItems = document.querySelectorAll('.featured-poster-item');
+  const item = featuredItems[index];
+  
+  if (!item) return;
+  
+  // Get data from data attributes
+  const backdrop = item.getAttribute('data-backdrop');
+  const logo = item.getAttribute('data-logo');
+  const title = item.getAttribute('data-title');
+  const year = item.getAttribute('data-year');
+  const duration = item.getAttribute('data-duration');
+  const genre = item.getAttribute('data-genre');
+  const plot = item.getAttribute('data-plot');
+  
+  // Update background image with crossfade effect (background only)
+  if (backdrop) {
+    requestAnimationFrame(() => {
+      // Create a temporary div for background transition
+      const tempBg = document.createElement('div');
+      tempBg.style.position = 'absolute';
+      tempBg.style.top = '0';
+      tempBg.style.left = '0';
+      tempBg.style.width = '100%';
+      tempBg.style.height = '100%';
+      tempBg.style.backgroundImage = `linear-gradient(to right, rgba(26, 31, 41, 0.95) 0%, rgba(26, 31, 41, 0.85) 50%, rgba(26, 31, 41, 0.3) 100%), url('${backdrop}')`;
+      tempBg.style.backgroundSize = 'cover';
+      tempBg.style.backgroundPosition = 'center';
+      tempBg.style.opacity = '0';
+      tempBg.style.transition = 'opacity 0.8s ease';
+      tempBg.style.zIndex = '0';
+      tempBg.style.pointerEvents = 'none'; // Don't interfere with carousel clicks
+      
+      featuredSection.appendChild(tempBg);
+      
+      // Fade in new background
+      setTimeout(() => {
+        tempBg.style.opacity = '1';
+      }, 50);
+      
+      // Remove old background and temp div after transition
+      setTimeout(() => {
+        featuredSection.style.backgroundImage = `linear-gradient(to right, rgba(26, 31, 41, 0.95) 0%, rgba(26, 31, 41, 0.85) 50%, rgba(26, 31, 41, 0.3) 100%), url('${backdrop}')`;
+        featuredSection.removeChild(tempBg);
+      }, 850);
+    });
+  }
+  
+  // Update content elements with fade effects (but NOT the entire content container)
+  setTimeout(() => {
+    const logoImg = featuredContent.querySelector('.featured-logo');
+    const titleFallback = featuredContent.querySelector('.featured-title-fallback');
+    const yearSpan = featuredContent.querySelector('.featured-year');
+    const durationSpan = featuredContent.querySelector('.featured-duration');
+    const genreSpan = featuredContent.querySelector('.featured-genre');
+    const plotP = featuredContent.querySelector('.featured-plot');
+    
+    // Helper function to fade individual elements
+    const fadeElement = (element, newValue, display = null) => {
+      if (!element || !newValue) return;
+      
+      // Fade out
+      element.style.transition = 'opacity 0.3s ease';
+      element.style.opacity = '0';
+      
+      // Update and fade back in
+      setTimeout(() => {
+        if (display !== null) {
+          element.style.display = display;
+        }
+        element.textContent = newValue;
+        element.style.opacity = '1';
+      }, 300);
+    };
+    
+    // Fade logo if it exists
+    if (logo && logoImg) {
+      logoImg.style.transition = 'opacity 0.3s ease';
+      logoImg.style.opacity = '0';
+      
+      setTimeout(() => {
+        logoImg.src = logo;
+        logoImg.style.opacity = '1';
+        logoImg.style.display = 'block';
+        if (titleFallback) {
+          titleFallback.style.display = 'none';
+        }
+      }, 300);
+    }
+    
+    // Handle title fallback
+    if (title && titleFallback) {
+      if (!logo || logo === '') {
+        titleFallback.style.transition = 'opacity 0.3s ease';
+        titleFallback.style.opacity = '0';
         
-        // Initialize when DOM is ready
-        setTimeout(initFeaturedCarousel, 1000);
-        
-        // Re-initialize when Shiny updates content
-        $(document).on('shiny:value', function(event) {
-          if (event.name === 'main_content') {
-            setTimeout(initFeaturedCarousel, 500);
-          }
-        });
-        
+        setTimeout(() => {
+          titleFallback.textContent = title;
+          titleFallback.style.display = 'block';
+          titleFallback.style.opacity = '1';
+          if (logoImg) logoImg.style.display = 'none';
+        }, 300);
+      } else {
+        titleFallback.textContent = title;
+      }
+    }
+    
+    // Fade other text elements
+    fadeElement(yearSpan, year);
+    fadeElement(durationSpan, duration);
+    fadeElement(genreSpan, genre);
+    
+    // Special handling for plot (longer text)
+    if (plot && plotP) {
+      plotP.style.transition = 'opacity 0.4s ease';
+      plotP.style.opacity = '0';
+      
+      setTimeout(() => {
+        plotP.textContent = plot;
+        plotP.style.opacity = '1';
+      }, 400);
+    }
+    
+  }, 200);
+}
+  
+  // Click handlers for featured posters
+  featuredItems.forEach((item, index) => {
+    item.addEventListener('click', function() {
+      currentFeaturedIndex = index;
+      updateCarouselPositions(index);
+      
+      // Reset auto-advance timer
+      if (featuredAutoAdvance) {
+        clearInterval(featuredAutoAdvance);
+      }
+      featuredAutoAdvance = setInterval(function() {
+        if (featuredItems.length > 0) {
+          currentFeaturedIndex = (currentFeaturedIndex + 1) % featuredItems.length;
+          updateCarouselPositions(currentFeaturedIndex);
+        }
+      }, 5000);
+    });
+  });
+  
+  // Initialize with first item in center
+  updateCarouselPositions(currentFeaturedIndex);
+  
+  // Auto-advance featured carousel every 5 seconds
+  featuredAutoAdvance = setInterval(function() {
+    if (featuredItems.length > 0) {
+      currentFeaturedIndex = (currentFeaturedIndex + 1) % featuredItems.length;
+      updateCarouselPositions(currentFeaturedIndex);
+    }
+  }, 5000);
+}
+
+// Helper function to understand the circular positioning
+function getCircularPosition(currentIndex, itemIndex, totalItems) {
+  // Calculate circular difference
+  let diff = (itemIndex - currentIndex + totalItems) % totalItems;
+  
+  // Only show 5 items at a time
+  if (diff > 2 && diff < totalItems - 2) {
+    return 0; // Hidden
+  }
+  
+  // Map to visible positions
+  switch(diff) {
+    case 0: return 3; // Center
+    case 1: return 4; // Right inner
+    case totalItems - 1: return 2; // Left inner
+    case 2: return 5; // Rightmost
+    case totalItems - 2: return 1; // Leftmost
+    default: return 0; // Hidden
+  }
+}
+
+// Initialize when DOM is ready
+setTimeout(initFeaturedCarousel, 1000);
+
+// Re-initialize when Shiny updates content
+$(document).on('shiny:value', function(event) {
+  if (event.name === 'main_content') {
+    setTimeout(initFeaturedCarousel, 500);
+  }
+});
+        // ==============================================================================
+// HIDE FAB ON HOME PAGE ONLY
+// ==============================================================================
+function updateFABForHomePage() {
+  const fab = document.querySelector('.fab');
+  if (!fab) return;
+  
+  // Check if we're on the home page
+  const isHomePage = document.querySelector('.nav-btn.active[data-page=\"home\"]') !== null;
+  
+  if (isHomePage) {
+    // Hide FAB on home page
+    fab.style.opacity = '0';
+    fab.style.pointerEvents = 'none';
+    fab.style.transform = 'translateY(20px) scale(0.8)';
+  } else {
+    // Show FAB on other pages
+    fab.style.opacity = '1';
+    fab.style.pointerEvents = 'auto';
+    fab.style.transform = '';
+  }
+}
+
+// Update when navigating
+document.addEventListener('click', function(event) {
+  if (event.target.closest('.nav-btn')) {
+    setTimeout(updateFABForHomePage, 100);
+  }
+});
+
+// Listen for Shiny page updates
+Shiny.addCustomMessageHandler('updateNavButtons', function(message) {
+  setTimeout(updateFABForHomePage, 100);
+});
+
+// Initial check
+setTimeout(updateFABForHomePage, 500);
+
         // ==============================================================================
         // PREVENT BODY SCROLLING WHEN MODAL IS OPEN
         // ==============================================================================
@@ -832,83 +1066,6 @@ window.addEventListener('load', function() {
       
       window.toggleUserMenu = toggleUserMenu;
       window.closeUserMenu = closeUserMenu;
-      
-      // ==============================================================================
-      // WELCOMING NOTIFICATION FUNCTIONS
-      // ==============================================================================
-      
-      // Custom welcoming notification function
-      function showWelcomingNotification(userName) {
-        // Remove any existing welcoming toast
-        const existingToast = document.querySelector('.welcoming-toast');
-        if (existingToast) {
-          existingToast.remove();
-        }
-        
-        // Create toast container
-        const toast = document.createElement('div');
-        toast.className = 'welcoming-toast';
-        
-        // Create toast content
-        toast.innerHTML = `
-          <div class=\"toast-content\">
-            <div class=\"toast-text\">
-              <div class=\"toast-title\">
-                Welcome back, <span class=\"user-name\">${userName}</span>!
-              </div>
-              <div class=\"toast-subtitle\">
-                Your watchlist is ready. Let's discover something amazing today!
-              </div>
-            </div>
-          </div>
-        `;
-        
-        // Add to body
-        document.body.appendChild(toast);
-        
-        // Auto-remove after 10 seconds
-        setTimeout(() => {
-          closeWelcomingToast(toast);
-        }, 10000);
-        
-        return toast;
-      }
-      
-      // Close toast function
-      function closeWelcomingToast(element) {
-        const toast = element.closest('.welcoming-toast') || element;
-        if (!toast) return;
-        
-        // Add exit animation class
-        toast.classList.add('exiting');
-        
-        // Remove after animation completes
-        setTimeout(() => {
-          if (toast.parentNode) {
-            toast.parentNode.removeChild(toast);
-          }
-        }, 400);
-      }
-      
-      // Add click handler for document to close toast when clicking outside
-      document.addEventListener('click', function(event) {
-        const toast = document.querySelector('.welcoming-toast');
-        const closeBtn = event.target.closest('.toast-close');
-        
-        if (toast && !closeBtn) {
-          const isClickInsideToast = toast.contains(event.target);
-          if (!isClickInsideToast) {
-            closeWelcomingToast(toast);
-          }
-        }
-      });
-      
-      // Add message handler for welcoming toast
-      Shiny.addCustomMessageHandler('showWelcomingToast', function(message) {
-        if (message.userName) {
-          showWelcomingNotification(message.userName);
-        }
-      });
       
       // ==============================================================================
       // SCROLL TO TOP WHEN SWITCHING TABS
@@ -1728,8 +1885,6 @@ function updateMovieDurationFields(isEditModal = false) {
       window.hideTmdbSuggestions = hideTmdbSuggestions;
       window.updateTotalEpisodesWatched = updateTotalEpisodesWatched;
       window.togglePasswordVisibility = togglePasswordVisibility;
-      window.showWelcomingNotification = showWelcomingNotification;
-      window.closeWelcomingToast = closeWelcomingToast;
       window.openEditModal = openEditModal;
       window.openDeleteModal = openDeleteModal;
     "))
@@ -1820,11 +1975,6 @@ server <- function(input, output, session) {
     featured_index = 0
   )
   
-  # NEW: Featured carousel index update
-  observeEvent(input$featured_index, {
-    rv$featured_index <- input$featured_index
-  })
-  
   # NEW: Toggle user menu
   observeEvent(input$toggle_user_menu, {
     rv$show_user_menu <- !rv$show_user_menu
@@ -1884,15 +2034,6 @@ server <- function(input, output, session) {
       rv$authenticated <- TRUE
       rv$current_user <- user
       rv$show_login_modal <- FALSE
-      
-      # Send custom welcoming notification
-      session$sendCustomMessage(
-        type = "showWelcomingToast",
-        message = list(
-          userName = user$name[1],
-          duration = 7000
-        )
-      )
       
       # CRITICAL FIX: Delay modal input reset to avoid validation trigger
       observe({
@@ -5037,7 +5178,7 @@ server <- function(input, output, session) {
     
     tagList(
       # ==============================================================================
-      # NEW: FEATURED SECTION
+      # NEW: FEATURED SECTION WITH LAYERED CAROUSEL
       # ==============================================================================
       tags$div(class = "featured-section",
                style = sprintf("background-image: linear-gradient(to right, rgba(26, 31, 41, 0.95) 0%%, rgba(26, 31, 41, 0.85) 50%%, rgba(26, 31, 41, 0.3) 100%%), url('%s');", 
@@ -5065,17 +5206,26 @@ server <- function(input, output, session) {
                                  tags$p(class = "featured-plot", featured$plot),
                         ),
                         
-                        # Right Side: Carousel
+                        # Right Side: Layered Carousel
                         tags$div(class = "featured-carousel",
-                                 lapply(1:length(FEATURED_CONTENT), function(i) {
-                                   item <- FEATURED_CONTENT[[i]]
-                                   tags$div(class = paste("featured-poster-item", 
-                                                          if(i == featured_idx) "active"),
-                                            `data-index` = i - 1,
-                                            tags$img(src = item$poster_url, 
-                                                     alt = item$title)
-                                   )
-                                 })
+                                 tags$div(class = "featured-carousel-container",
+                                          lapply(1:length(FEATURED_CONTENT), function(i) {
+                                            item <- FEATURED_CONTENT[[i]]
+                                            tags$div(class = "featured-poster-item",
+                                                     `data-index` = i - 1,
+                                                     `data-backdrop` = item$backdrop_url,
+                                                     `data-logo` = item$logo_url,
+                                                     `data-title` = item$title,
+                                                     `data-year` = item$year,
+                                                     `data-duration` = item$duration,
+                                                     `data-genre` = item$genre,
+                                                     `data-plot` = item$plot,
+                                                     tags$img(src = item$poster_url, 
+                                                              alt = item$title,
+                                                              onerror = "this.src='https://via.placeholder.com/500x750/1A1F29/00A8E8?text=No+Poster';")
+                                            )
+                                          })
+                                 )
                         )
                )
       ),
@@ -6243,6 +6393,34 @@ server <- function(input, output, session) {
     if (!is.null(input$rec_go_to_page) && input$rec_go_to_page >= 1 && input$rec_go_to_page <= rv$rec_total_pages) {
       rv$rec_page <- input$rec_go_to_page
     }
+  })
+  
+  # In the server section, after the page navigation observers:
+  observeEvent(input$nav_home, { 
+    rv$page <- "home" 
+    updateNavButtons("home")
+    session$sendCustomMessage("scrollToTop", list())
+    # Send FAB visibility update
+    session$sendCustomMessage("updateFABVisibility", list())
+  })
+  observeEvent(input$nav_stats, { 
+    rv$page <- "stats" 
+    updateNavButtons("stats")
+    session$sendCustomMessage("scrollToTop", list())
+    session$sendCustomMessage("updateFABVisibility", list())
+  })
+  observeEvent(input$nav_library, { 
+    rv$page <- "library" 
+    rv$library_page <- 1
+    updateNavButtons("library")
+    session$sendCustomMessage("scrollToTop", list())
+    session$sendCustomMessage("updateFABVisibility", list())
+  })
+  observeEvent(input$nav_recommendations, { 
+    rv$page <- "recommendations" 
+    updateNavButtons("recommendations")
+    session$sendCustomMessage("scrollToTop", list())
+    session$sendCustomMessage("updateFABVisibility", list())
   })
   
   # ==============================================================================
