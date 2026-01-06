@@ -915,44 +915,7 @@ $(document).on('shiny:value', function(event) {
     setTimeout(initFeaturedCarousel, 500);
   }
 });
-        // ==============================================================================
-// HIDE FAB ON HOME PAGE ONLY
-// ==============================================================================
-function updateFABForHomePage() {
-  const fab = document.querySelector('.fab');
-  if (!fab) return;
-  
-  // Check if we're on the home page
-  const isHomePage = document.querySelector('.nav-btn.active[data-page=\"home\"]') !== null;
-  
-  if (isHomePage) {
-    // Hide FAB on home page
-    fab.style.opacity = '0';
-    fab.style.pointerEvents = 'none';
-    fab.style.transform = 'translateY(20px) scale(0.8)';
-  } else {
-    // Show FAB on other pages
-    fab.style.opacity = '1';
-    fab.style.pointerEvents = 'auto';
-    fab.style.transform = '';
-  }
-}
-
-// Update when navigating
-document.addEventListener('click', function(event) {
-  if (event.target.closest('.nav-btn')) {
-    setTimeout(updateFABForHomePage, 100);
-  }
-});
-
-// Listen for Shiny page updates
-Shiny.addCustomMessageHandler('updateNavButtons', function(message) {
-  setTimeout(updateFABForHomePage, 100);
-});
-
-// Initial check
-setTimeout(updateFABForHomePage, 500);
-
+        
         // ==============================================================================
         // PREVENT BODY SCROLLING WHEN MODAL IS OPEN
         // ==============================================================================
@@ -1885,6 +1848,8 @@ function updateMovieDurationFields(isEditModal = false) {
       window.hideTmdbSuggestions = hideTmdbSuggestions;
       window.updateTotalEpisodesWatched = updateTotalEpisodesWatched;
       window.togglePasswordVisibility = togglePasswordVisibility;
+      window.showWelcomingNotification = showWelcomingNotification;
+      window.closeWelcomingToast = closeWelcomingToast;
       window.openEditModal = openEditModal;
       window.openDeleteModal = openDeleteModal;
     "))
@@ -2100,7 +2065,7 @@ server <- function(input, output, session) {
         uiOutput("main_content"),
         
         # FAB
-        tags$button(class = "fab", onclick = "Shiny.setInputValue('show_add_modal', Math.random());", "+"),
+        uiOutput("fab_button"),
         
         # Add Modal
         uiOutput("add_modal"),
@@ -5029,6 +4994,21 @@ server <- function(input, output, session) {
     else if (rv$page == "recommendations") render_recommendations_page()
   })
   
+  # ==============================================================================
+  # CONDITIONAL FAB BUTTON - Only shows on Library tab
+  # ==============================================================================
+  
+  output$fab_button <- renderUI({
+    # Only show FAB on library page
+    if (rv$page == "library") {
+      tags$button(class = "fab", 
+                  onclick = "Shiny.setInputValue('show_add_modal', Math.random());", 
+                  "+")
+    } else {
+      NULL
+    }
+  })
+  
   # NEW: Stats Page
   render_stats <- function() {
     items <- get_all_items()
@@ -5162,7 +5142,46 @@ server <- function(input, output, session) {
                                           tags$p(total_watch_metric)
                                  )
                         )
-               )
+               ),
+               
+               
+               # ==============================================================================
+               # EXISTING: RECENTLY ADDED SECTION
+               # ==============================================================================
+               tags$div(class = "section-header", style = "margin-top: 2.5rem;",
+                        tags$h2(class = "section-title", "Recently Added"),
+                        tags$a(class = "view-all", "View All →", 
+                               onclick = "Shiny.setInputValue('view_all_clicked', Math.random());")
+               ),
+               
+               if (nrow(items) == 0) {
+                 empty_msg <- get_empty_state_message()
+                 tags$div(class = "empty-state",
+                          tags$h3(empty_msg$title),
+                          tags$p(empty_msg$message)
+                 )
+               } else {
+                 # Display 10 items, duplicate for seamless loop
+                 recent_items <- head(items, 10)
+                 if (nrow(recent_items) > 0) {
+                   tags$div(class = "carousel-wrapper",
+                            tags$div(class = "carousel-track",
+                                     # First set of cards
+                                     lapply(1:nrow(recent_items), function(i) {
+                                       tags$div(class = "carousel-card",
+                                                render_movie_card(recent_items[i, ])
+                                       )
+                                     }),
+                                     # Duplicate set for seamless loop
+                                     lapply(1:nrow(recent_items), function(i) {
+                                       tags$div(class = "carousel-card",
+                                                render_movie_card(recent_items[i, ])
+                                       )
+                                     })
+                            )
+                   )
+                 }
+               }
       )
     )
   }
@@ -5229,44 +5248,6 @@ server <- function(input, output, session) {
                         )
                )
       ),
-      
-      # ==============================================================================
-      # EXISTING: RECENTLY ADDED SECTION
-      # ==============================================================================
-      tags$div(class = "section-header", style = "margin-top: 2.5rem;",
-               tags$h2(class = "section-title", "Recently Added"),
-               tags$a(class = "view-all", "View All →", 
-                      onclick = "Shiny.setInputValue('view_all_clicked', Math.random());")
-      ),
-      
-      if (nrow(items) == 0) {
-        empty_msg <- get_empty_state_message()
-        tags$div(class = "empty-state",
-                 tags$h3(empty_msg$title),
-                 tags$p(empty_msg$message)
-        )
-      } else {
-        # Display 10 items, duplicate for seamless loop
-        recent_items <- head(items, 10)
-        if (nrow(recent_items) > 0) {
-          tags$div(class = "carousel-wrapper",
-                   tags$div(class = "carousel-track",
-                            # First set of cards
-                            lapply(1:nrow(recent_items), function(i) {
-                              tags$div(class = "carousel-card",
-                                       render_movie_card(recent_items[i, ])
-                              )
-                            }),
-                            # Duplicate set for seamless loop
-                            lapply(1:nrow(recent_items), function(i) {
-                              tags$div(class = "carousel-card",
-                                       render_movie_card(recent_items[i, ])
-                              )
-                            })
-                   )
-          )
-        }
-      }
     )
   }
   
@@ -6393,34 +6374,6 @@ server <- function(input, output, session) {
     if (!is.null(input$rec_go_to_page) && input$rec_go_to_page >= 1 && input$rec_go_to_page <= rv$rec_total_pages) {
       rv$rec_page <- input$rec_go_to_page
     }
-  })
-  
-  # In the server section, after the page navigation observers:
-  observeEvent(input$nav_home, { 
-    rv$page <- "home" 
-    updateNavButtons("home")
-    session$sendCustomMessage("scrollToTop", list())
-    # Send FAB visibility update
-    session$sendCustomMessage("updateFABVisibility", list())
-  })
-  observeEvent(input$nav_stats, { 
-    rv$page <- "stats" 
-    updateNavButtons("stats")
-    session$sendCustomMessage("scrollToTop", list())
-    session$sendCustomMessage("updateFABVisibility", list())
-  })
-  observeEvent(input$nav_library, { 
-    rv$page <- "library" 
-    rv$library_page <- 1
-    updateNavButtons("library")
-    session$sendCustomMessage("scrollToTop", list())
-    session$sendCustomMessage("updateFABVisibility", list())
-  })
-  observeEvent(input$nav_recommendations, { 
-    rv$page <- "recommendations" 
-    updateNavButtons("recommendations")
-    session$sendCustomMessage("scrollToTop", list())
-    session$sendCustomMessage("updateFABVisibility", list())
   })
   
   # ==============================================================================
