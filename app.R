@@ -1911,10 +1911,6 @@ server <- function(input, output, session) {
     show_login_modal = FALSE,
     show_user_menu = FALSE,  # NEW: User menu state
     
-    # NEW: TMDB ID storage
-    modal_tmdb_id = NULL,
-    edit_modal_tmdb_id = NULL,
-    
     # Existing reactive values
     page = "home",
     show_modal = FALSE,
@@ -2771,8 +2767,7 @@ server <- function(input, output, session) {
     rv$current_tmdb_id <- NULL
     rv$is_fetching_season <- FALSE
     rv$calculated_total_episodes_watched <- 0
-    rv$modal_source <- "manual"
-    rv$modal_tmdb_id <- NULL
+    rv$modal_source <- "manual"  # Reset modal source
   })
   
   observeEvent(input$close_details_modal, { 
@@ -2857,7 +2852,6 @@ server <- function(input, output, session) {
     rv$edit_current_tmdb_id <- NULL
     rv$edit_is_fetching_season <- FALSE
     rv$edit_calculated_total_episodes_watched <- 0
-    rv$edit_modal_tmdb_id <- NULL
   })
   
   # NEW: Handle delete button click
@@ -3400,7 +3394,7 @@ server <- function(input, output, session) {
         tmdb_id <- as.numeric(data$id)
         media_type <- data$media_type
         
-        # Store TMDB ID for season fetching
+        # Store TMDB ID for season fetching AND for database insertion
         rv$current_tmdb_id <- tmdb_id
         
         # Show loading notification
@@ -3458,17 +3452,6 @@ server <- function(input, output, session) {
               updateNumericInput(session, "modal_episodes_current_season", value = 10) # Default fallback
             }
           }
-          
-          # CRITICAL FIX: Store TMDB ID in a reactive value and update a hidden input
-          rv$modal_tmdb_id <- tmdb_id
-          
-          # Update hidden input field
-          insertUI(
-            selector = "#modal_title",
-            where = "afterEnd",
-            ui = tags$input(type = "hidden", id = "modal_tmdb_id", value = tmdb_id),
-            immediate = TRUE
-          )
           
           # Update JavaScript functions
           session$sendCustomMessage(
@@ -3568,34 +3551,23 @@ server <- function(input, output, session) {
             }
           }
           
-          # CRITICAL FIX: Store TMDB ID in a reactive value and update a hidden input
-          rv$edit_modal_tmdb_id <- tmdb_id
-          
-          # Update hidden input field
-          insertUI(
-            selector = "#edit_modal_title",
-            where = "afterEnd",
-            ui = tags$input(type = "hidden", id = "edit_modal_tmdb_id", value = tmdb_id),
-            immediate = TRUE
-          )
-          
           # Update JavaScript functions
           session$sendCustomMessage(
             type = "eval",
             message = "setTimeout(function() { 
-            if (typeof updateModalDisplay === 'function') { 
-              updateModalDisplay(true); 
-            }
-            if (typeof updateTVSeriesFields === 'function') { 
-              updateTVSeriesFields(true); 
-            }
-            if (typeof updateMovieDurationFields === 'function') {
-              updateMovieDurationFields(true);
-            }
-            if (typeof updateEpisodeIndicator === 'function') {
-              updateEpisodeIndicator(true);
-            }
-          }, 100);"
+              if (typeof updateModalDisplay === 'function') { 
+                updateModalDisplay(true); 
+              }
+              if (typeof updateTVSeriesFields === 'function') { 
+                updateTVSeriesFields(true); 
+              }
+              if (typeof updateMovieDurationFields === 'function') {
+                updateMovieDurationFields(true);
+              }
+              if (typeof updateEpisodeIndicator === 'function') {
+                updateEpisodeIndicator(true);
+              }
+            }, 100);"
           )
           
           showNotification("✅ TMDB data loaded successfully! You can edit any field.", 
@@ -4893,7 +4865,6 @@ server <- function(input, output, session) {
                       Shiny.setInputValue('modal_watched_duration', %d);
                       Shiny.setInputValue('modal_status', 'Unwatched');
                       Shiny.setInputValue('modal_rating_value', 0);
-                      Shiny.setInputValue('modal_tmdb_id', %d);
                       Shiny.setInputValue('show_add_modal', Math.random());
                       Shiny.setInputValue('close_rec_details_modal', Math.random());
                     ",
@@ -5250,22 +5221,7 @@ server <- function(input, output, session) {
     cat("Watch Status:", input$modal_status, "| Rating Value:", rating_value, "\n")
     
     # Get TMDB ID if available
-    tmdb_id <- NULL
-    # First check reactive value
-    if (!is.null(rv$modal_tmdb_id)) {
-      tmdb_id <- as.numeric(rv$modal_tmdb_id)
-    } 
-    # Then check hidden input field
-    else if (!is.null(input$modal_tmdb_id) && input$modal_tmdb_id != "") {
-      tmdb_id <- as.numeric(input$modal_tmdb_id)
-    }
-    # Also check from current_tmdb_id reactive value
-    else if (!is.null(rv$current_tmdb_id)) {
-      tmdb_id <- as.numeric(rv$current_tmdb_id)
-    }
-    
-    # Debug: Log the TMDB ID retrieval
-    cat("TMDB ID retrieved for insertion:", tmdb_id, "\n")
+    tmdb_id <- rv$current_tmdb_id
     
     # Initialize variables for both movie and TV series
     total_duration <- 0
@@ -5401,14 +5357,6 @@ server <- function(input, output, session) {
       genre_str <- paste(input$modal_genre, collapse = ", ")
       date_watched <- if (input$modal_status == "Watched") Sys.Date() else NULL
       
-      cat("=== FINAL SUBMISSION DEBUG ===\n")
-      cat("Title:", input$modal_title, "\n")
-      cat("TMDB ID to store:", tmdb_id, "\n")
-      cat("TMDB ID type:", class(tmdb_id), "\n")
-      cat("TMDB ID is NULL:", is.null(tmdb_id), "\n")
-      cat("TMDB ID is NA:", is.na(tmdb_id), "\n")
-      cat("=====================\n")
-      
       # SQL query with all fields
       query <- sprintf(
         "INSERT INTO movies_series 
@@ -5538,26 +5486,7 @@ server <- function(input, output, session) {
     cat("EDIT - Watch Status:", input$edit_modal_status, "| Rating Value:", rating_value, "\n")
     
     # Get TMDB ID if available
-    tmdb_id <- NULL
-    # First check reactive value
-    if (!is.null(rv$edit_modal_tmdb_id)) {
-      tmdb_id <- as.numeric(rv$edit_modal_tmdb_id)
-    } 
-    # Then check hidden input field
-    else if (!is.null(input$edit_modal_tmdb_id) && input$edit_modal_tmdb_id != "") {
-      tmdb_id <- as.numeric(input$edit_modal_tmdb_id)
-    }
-    # Also check from edit_current_tmdb_id reactive value
-    else if (!is.null(rv$edit_current_tmdb_id)) {
-      tmdb_id <- as.numeric(rv$edit_current_tmdb_id)
-    }
-    # Finally, check if it's in the editing item
-    else if (!is.null(rv$editing_item$tmdb_id) && !is.na(rv$editing_item$tmdb_id)) {
-      tmdb_id <- as.numeric(rv$editing_item$tmdb_id)
-    }
-    
-    # Debug: Log the TMDB ID retrieval
-    cat("EDIT - TMDB ID retrieved for update:", tmdb_id, "\n")
+    tmdb_id <- rv$edit_current_tmdb_id
     
     # Initialize variables for both movie and TV series
     total_duration <- 0
