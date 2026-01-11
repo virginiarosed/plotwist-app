@@ -104,6 +104,32 @@ get_db_connection <- function() {
   })
 }
 
+# Run this ONCE to create the achievement_notifications table
+migrate_achievement_notifications <- function() {
+  con <- get_db_connection()
+  if (is.null(con)) return()
+  
+  tryCatch({
+    dbExecute(con, "
+      CREATE TABLE IF NOT EXISTS achievement_notifications (
+          user_id INTEGER NOT NULL,
+          achievement_id VARCHAR(50) NOT NULL,
+          shown_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (user_id, achievement_id),
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      )
+    ")
+    dbDisconnect(con)
+    message("✅ Achievement notifications table created successfully!")
+  }, error = function(e) {
+    if (!is.null(con)) dbDisconnect(con)
+    message("❌ Error creating achievement notifications table: ", e$message)
+  })
+}
+
+# Call this once when the app starts
+migrate_achievement_notifications()
+
 TMDB_API_KEY <- "3634119368f89a9c28e1768f1a04cefd"
 TMDB_BASE_URL <- "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE <- "https://image.tmdb.org/t/p/w500"
@@ -503,6 +529,7 @@ ui <- fluidPage(
     tags$link(rel = "apple-touch-icon", sizes = "180x180", href = "favicon.png"),
     tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "favicon.png"),
     tags$link(rel = "icon", type = "image/png", sizes = "16x16", href = "favicon.png"),
+    tags$link(rel = "stylesheet", href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"),
     
     tags$script(HTML("
       document.addEventListener('DOMContentLoaded', function() {
@@ -934,26 +961,27 @@ $(document).on('shiny:value', function(event) {
         }
         
         // Observe modal openings
-        const observer = new MutationObserver(function(mutations) {
-          mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList') {
-              const addModal = document.querySelector('.modal-overlay:has(.modal-box:not(.details-modal))');
-              const detailsModal = document.querySelector('.modal-overlay:has(.details-modal)');
-              const loginModal = document.querySelector('.modal-overlay:has(.login-modal)');
-              const editModal = document.querySelector('.modal-overlay:has(.edit-modal)');
-              const confirmModal = document.querySelector('.modal-overlay:has(.confirm-delete-modal)');
-              const recDetailsModal = document.querySelector('.modal-overlay:has(.rec-details-modal)');
-              const userMenuOverlay = document.querySelector('.user-menu-overlay');
-              
-              if (addModal || detailsModal || loginModal || editModal || confirmModal || recDetailsModal || userMenuOverlay) {
-                preventBodyScroll();
-              } else {
-                allowBodyScroll();
-              }
-            }
-          });
-        });
-        
+const observer = new MutationObserver(function(mutations) {
+  mutations.forEach(function(mutation) {
+    if (mutation.type === 'childList') {
+      const addModal = document.querySelector('.modal-overlay:has(.modal-box:not(.details-modal))');
+      const detailsModal = document.querySelector('.modal-overlay:has(.details-modal)');
+      const loginModal = document.querySelector('.modal-overlay:has(.login-modal)');
+      const editModal = document.querySelector('.modal-overlay:has(.edit-modal)');
+      const confirmModal = document.querySelector('.modal-overlay:has(.confirm-delete-modal)');
+      const recDetailsModal = document.querySelector('.modal-overlay:has(.rec-details-modal)');
+      const achievementModal = document.querySelector('.achievement-modal-overlay');
+      const userMenuOverlay = document.querySelector('.user-menu-overlay');
+      
+      if (addModal || detailsModal || loginModal || editModal || confirmModal || recDetailsModal || achievementModal || userMenuOverlay) {
+        preventBodyScroll();
+      } else {
+        allowBodyScroll();
+      }
+    }
+  });
+});
+
         // Start observing the body for modal changes
         observer.observe(document.body, { childList: true, subtree: true });
         
@@ -1883,6 +1911,10 @@ server <- function(input, output, session) {
     show_login_modal = FALSE,
     show_user_menu = FALSE,  # NEW: User menu state
     
+    # NEW: TMDB ID storage
+    modal_tmdb_id = NULL,
+    edit_modal_tmdb_id = NULL,
+    
     # Existing reactive values
     page = "home",
     show_modal = FALSE,
@@ -1937,7 +1969,37 @@ server <- function(input, output, session) {
     rec_details_loading = FALSE,
     
     # NEW: Featured section state
-    featured_index = 0
+    featured_index = 0,
+    
+    achievement_to_show = NULL,
+    
+    # Achievement reactive values
+    achievements_unlocked = list(),
+    badge_progress = list(
+      first_watch = FALSE,
+      media_mogul = FALSE,
+      marathon_master = FALSE,
+      critic_training = FALSE,
+      harsh_critic = FALSE,
+      genre_sampler = FALSE,
+      time_traveler = FALSE,
+      classic_connoisseur = FALSE,
+      streak_keeper = FALSE,
+      plotwist_badge = FALSE,
+      essayist = FALSE,
+      haiku_reviewer = FALSE,
+      actor_apprentice = FALSE,
+      director_devotee = FALSE,
+      romance_royalty = FALSE,
+      mad_scientist = FALSE,
+      perfectionist = FALSE,
+      numerical = FALSE,
+      developers_cut = FALSE,
+      developers_season = FALSE,
+      plotwist_special = FALSE
+    ),
+    current_streak = 0,
+    last_watch_date = NULL
   )
   
   # NEW: Toggle user menu
@@ -2051,7 +2113,8 @@ server <- function(input, output, session) {
                           actionLink("nav_home", "Home", class = "nav-btn", `data-page` = "home"),
                           actionLink("nav_stats", "Stats", class = "nav-btn", `data-page` = "stats"),  # NEW: Stats tab
                           actionLink("nav_library", "Library", class = "nav-btn", `data-page` = "library"),
-                          actionLink("nav_recommendations", "Recommendations", class = "nav-btn", `data-page` = "recommendations")
+                          actionLink("nav_recommendations", "Recommendations", class = "nav-btn", `data-page` = "recommendations"),
+                          actionLink("nav_achievements", "Achievements", class = "nav-btn", `data-page` = "achievements")
                  ),
                  tags$div(class = "nav-icons",
                           tags$a(href = "#", class = "nav-icon",
@@ -2081,6 +2144,9 @@ server <- function(input, output, session) {
         
         # NEW: Recommendation Details Modal
         uiOutput("rec_details_modal"),
+        
+        # Achievement Modal
+        uiOutput("achievement_modal"),
         
         # NEW: User Menu
         uiOutput("user_menu")
@@ -2199,6 +2265,477 @@ server <- function(input, output, session) {
     )
   }
   
+  # ==============================================================================
+  # ACHIEVEMENT NOTIFICATION TRACKING HELPERS
+  # ==============================================================================
+  
+  # Helper function to check if notification was already shown
+  has_shown_notification <- function(achievement_id) {
+    if (is.null(rv$current_user)) return(TRUE)
+    
+    con <- get_db_connection()
+    if (is.null(con)) return(FALSE)
+    
+    tryCatch({
+      query <- sprintf("SELECT COUNT(*) as count FROM achievement_notifications WHERE user_id = %d AND achievement_id = '%s'",
+                       rv$current_user$id[1], achievement_id)
+      result <- dbGetQuery(con, query)
+      dbDisconnect(con)
+      return(result$count[1] > 0)
+    }, error = function(e) {
+      if (!is.null(con)) dbDisconnect(con)
+      return(FALSE)
+    })
+  }
+  
+  # Helper function to mark notification as shown
+  mark_notification_shown <- function(achievement_id) {
+    if (is.null(rv$current_user)) return()
+    
+    con <- get_db_connection()
+    if (is.null(con)) return()
+    
+    tryCatch({
+      query <- sprintf("INSERT INTO achievement_notifications (user_id, achievement_id) VALUES (%d, '%s') ON CONFLICT DO NOTHING",
+                       rv$current_user$id[1], achievement_id)
+      dbExecute(con, query)
+      dbDisconnect(con)
+    }, error = function(e) {
+      if (!is.null(con)) dbDisconnect(con)
+    })
+  }
+  
+  # ==============================================================================
+  # ACHIEVEMENT CHECKING FUNCTION - MODIFIED FOR MODAL
+  # ==============================================================================
+  
+  check_achievements <- function() {
+    items <- get_all_items()
+    if (nrow(items) == 0) return()
+    
+    # Store which achievements were unlocked in this check
+    newly_unlocked <- list()
+    
+    # 1. First Watch
+    if (!rv$badge_progress$first_watch && nrow(items) >= 1) {
+      rv$badge_progress$first_watch <- TRUE
+      if (!"first_watch" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "first_watch")
+        if (!has_shown_notification("first_watch")) {
+          newly_unlocked[["first_watch"]] <- list(
+            name = "First Watch",
+            description = "Added your first item to your library",
+            badge_image = "badges/first_watch.png"
+          )
+          mark_notification_shown("first_watch")
+        }
+      }
+    }
+    
+    # 2. Media Mogul
+    check_media_mogul <- function() {
+      items <- get_all_items()
+      return(nrow(items) >= 100)
+    }
+    
+    if (!rv$badge_progress$media_mogul) {
+      rv$badge_progress$media_mogul <- check_media_mogul()
+      if (rv$badge_progress$media_mogul && !"media_mogul" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "media_mogul")
+        if (!has_shown_notification("media_mogul")) {
+          newly_unlocked[["media_mogul"]] <- list(
+            name = "Media Mogul",
+            description = "Added 100 items to your library",
+            badge_image = "badges/media_mogul.png"
+          )
+          mark_notification_shown("media_mogul")
+        }
+      }
+    }
+    
+    # 3. Marathon Master
+    marathon_items <- items[items$media_type == "TV Series" & 
+                              items$watch_status == "Watched" & 
+                              !is.na(items$total_episodes) & 
+                              items$total_episodes >= 50, ]
+    if (!rv$badge_progress$marathon_master && nrow(marathon_items) > 0) {
+      rv$badge_progress$marathon_master <- TRUE
+      if (!"marathon_master" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "marathon_master")
+        if (!has_shown_notification("marathon_master")) {
+          newly_unlocked[["marathon_master"]] <- list(
+            name = "Marathon Master",
+            description = "Completed a TV series with 50+ episodes",
+            badge_image = "badges/marathon_master.png"
+          )
+          mark_notification_shown("marathon_master")
+        }
+      }
+    }
+    
+    # 4. Critic in Training
+    rated_items <- items[items$rating > 0 & !is.na(items$rating), ]
+    if (!rv$badge_progress$critic_training && nrow(rated_items) >= 10) {
+      rv$badge_progress$critic_training <- TRUE
+      if (!"critic_training" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "critic_training")
+        if (!has_shown_notification("critic_training")) {
+          newly_unlocked[["critic_training"]] <- list(
+            name = "Critic in Training",
+            description = "Rated 10 different items",
+            badge_image = "badges/critic_training.png"
+          )
+          mark_notification_shown("critic_training")
+        }
+      }
+    }
+    
+    # 5. Harsh Critic
+    one_star_items <- items[items$rating == 1 & !is.na(items$rating), ]
+    if (!rv$badge_progress$harsh_critic && nrow(one_star_items) > 0) {
+      rv$badge_progress$harsh_critic <- TRUE
+      if (!"harsh_critic" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "harsh_critic")
+        if (!has_shown_notification("harsh_critic")) {
+          newly_unlocked[["harsh_critic"]] <- list(
+            name = "Harsh Critic",
+            description = "Gave a 1-star rating to an item",
+            badge_image = "badges/harsh_critic.png"
+          )
+          mark_notification_shown("harsh_critic")
+        }
+      }
+    }
+    
+    # 6. Genre Sampler
+    all_genres <- unlist(strsplit(items$genre, ", "))
+    unique_genres <- unique(trimws(all_genres))
+    if (!rv$badge_progress$genre_sampler && length(unique_genres) >= 5) {
+      rv$badge_progress$genre_sampler <- TRUE
+      if (!"genre_sampler" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "genre_sampler")
+        if (!has_shown_notification("genre_sampler")) {
+          newly_unlocked[["genre_sampler"]] <- list(
+            name = "Genre Sampler",
+            description = "Watched items from 5+ different genres",
+            badge_image = "badges/genre_sampler.png"
+          )
+          mark_notification_shown("genre_sampler")
+        }
+      }
+    }
+    
+    # 7. Time Traveler
+    decades <- floor(items$year / 10) * 10
+    unique_decades <- unique(decades)
+    if (!rv$badge_progress$time_traveler && length(unique_decades) >= 5) {
+      rv$badge_progress$time_traveler <- TRUE
+      if (!"time_traveler" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "time_traveler")
+        if (!has_shown_notification("time_traveler")) {
+          newly_unlocked[["time_traveler"]] <- list(
+            name = "Time Traveler",
+            description = "Watched items from 5 different decades",
+            badge_image = "badges/time_traveler.png"
+          )
+          mark_notification_shown("time_traveler")
+        }
+      }
+    }
+    
+    # 8. Classic Connoisseur
+    classic_items <- items[items$year <= 1979 & !is.na(items$year), ]
+    if (!rv$badge_progress$classic_connoisseur && nrow(classic_items) > 0) {
+      rv$badge_progress$classic_connoisseur <- TRUE
+      if (!"classic_connoisseur" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "classic_connoisseur")
+        if (!has_shown_notification("classic_connoisseur")) {
+          newly_unlocked[["classic_connoisseur"]] <- list(
+            name = "Classic Connoisseur",
+            description = "Watched an item from the 1970s or earlier",
+            badge_image = "badges/classic_connoisseur.png"
+          )
+          mark_notification_shown("classic_connoisseur")
+        }
+      }
+    }
+    
+    # 9. Streak Keeper
+    check_streak <- function() {
+      con <- get_db_connection()
+      if (!is.null(con)) {
+        tryCatch({
+          query <- "SELECT DISTINCT watch_date FROM watch_history 
+                 ORDER BY watch_date DESC LIMIT 7"
+          result <- dbGetQuery(con, query)
+          dbDisconnect(con)
+          
+          if (nrow(result) < 7) return(FALSE)
+          
+          dates <- as.Date(result$watch_date)
+          current_date <- Sys.Date()
+          
+          for (i in 1:6) {
+            if (as.numeric(difftime(dates[i], dates[i+1], units = "days")) != 1) {
+              return(FALSE)
+            }
+          }
+          return(TRUE)
+        }, error = function(e) {
+          if (!is.null(con)) dbDisconnect(con)
+          return(FALSE)
+        })
+      }
+      return(FALSE)
+    }
+    
+    if (!rv$badge_progress$streak_keeper) {
+      rv$badge_progress$streak_keeper <- check_streak()
+      if (rv$badge_progress$streak_keeper && !"streak_keeper" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "streak_keeper")
+        if (!has_shown_notification("streak_keeper")) {
+          newly_unlocked[["streak_keeper"]] <- list(
+            name = "Streak Keeper",
+            description = "Watched items for 7 consecutive days",
+            badge_image = "badges/streak_keeper.png"
+          )
+          mark_notification_shown("streak_keeper")
+        }
+      }
+    }
+    
+    # 10. Essayist
+    if (!rv$badge_progress$essayist && nrow(items) > 0) {
+      has_long_review <- any(nchar(items$review[!is.na(items$review)]) >= 500)
+      rv$badge_progress$essayist <- has_long_review
+      if (rv$badge_progress$essayist && !"essayist" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "essayist")
+        if (!has_shown_notification("essayist")) {
+          newly_unlocked[["essayist"]] <- list(
+            name = "Essayist",
+            description = "Wrote a review with 500+ characters",
+            badge_image = "badges/essayist.png"
+          )
+          mark_notification_shown("essayist")
+        }
+      }
+    }
+    
+    # 11. Haiku Reviewer
+    if (!rv$badge_progress$haiku_reviewer && nrow(items) > 0) {
+      has_short_review <- any(!is.na(items$review) & 
+                                nchar(items$review) > 0 & 
+                                nchar(items$review) <= 100)
+      rv$badge_progress$haiku_reviewer <- has_short_review
+      if (rv$badge_progress$haiku_reviewer && !"haiku_reviewer" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "haiku_reviewer")
+        if (!has_shown_notification("haiku_reviewer")) {
+          newly_unlocked[["haiku_reviewer"]] <- list(
+            name = "Haiku Reviewer",
+            description = "Wrote a review with 100 characters or less",
+            badge_image = "badges/haiku_reviewer.png"
+          )
+          mark_notification_shown("haiku_reviewer")
+        }
+      }
+    }
+    
+    # 12. Actor Apprentice
+    if (!rv$badge_progress$actor_apprentice && nrow(items) > 0) {
+      all_actors <- unlist(strsplit(items$cast[!is.na(items$cast)], ", "))
+      actor_counts <- table(trimws(all_actors))
+      has_five_actor <- any(actor_counts >= 5)
+      rv$badge_progress$actor_apprentice <- has_five_actor
+      if (rv$badge_progress$actor_apprentice && !"actor_apprentice" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "actor_apprentice")
+        if (!has_shown_notification("actor_apprentice")) {
+          newly_unlocked[["actor_apprentice"]] <- list(
+            name = "Actor Apprentice",
+            description = "Watched 5+ works by the same actor",
+            badge_image = "badges/actor_apprentice.png"
+          )
+          mark_notification_shown("actor_apprentice")
+        }
+      }
+    }
+    
+    # 13. Director Devotee
+    if (!rv$badge_progress$director_devotee && nrow(items) > 0) {
+      all_directors <- unlist(strsplit(items$director[!is.na(items$director)], ", "))
+      director_counts <- table(trimws(all_directors))
+      has_five_director <- any(director_counts >= 5)
+      rv$badge_progress$director_devotee <- has_five_director
+      if (rv$badge_progress$director_devotee && !"director_devotee" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "director_devotee")
+        if (!has_shown_notification("director_devotee")) {
+          newly_unlocked[["director_devotee"]] <- list(
+            name = "Director Devotee",
+            description = "Watched 5+ works by the same director",
+            badge_image = "badges/director_devotee.png"
+          )
+          mark_notification_shown("director_devotee")
+        }
+      }
+    }
+    
+    # 14. Romance Royalty
+    if (!rv$badge_progress$romance_royalty && nrow(items) > 0) {
+      romance_items <- items[grepl("romance", items$genre, ignore.case = TRUE) & 
+                               items$media_type == "Movie", ]
+      rv$badge_progress$romance_royalty <- nrow(romance_items) >= 10
+      if (rv$badge_progress$romance_royalty && !"romance_royalty" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "romance_royalty")
+        if (!has_shown_notification("romance_royalty")) {
+          newly_unlocked[["romance_royalty"]] <- list(
+            name = "Romance Royalty",
+            description = "Watched 10+ romance movies",
+            badge_image = "badges/romance_royalty.png"
+          )
+          mark_notification_shown("romance_royalty")
+        }
+      }
+    }
+    
+    # 15. Mad Scientist
+    if (!rv$badge_progress$mad_scientist && nrow(items) > 0) {
+      scifi_items <- items[grepl("science fiction|sci-fi", items$genre, ignore.case = TRUE) & 
+                             items$media_type == "Movie", ]
+      rv$badge_progress$mad_scientist <- nrow(scifi_items) >= 10
+      if (rv$badge_progress$mad_scientist && !"mad_scientist" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "mad_scientist")
+        if (!has_shown_notification("mad_scientist")) {
+          newly_unlocked[["mad_scientist"]] <- list(
+            name = "Mad Scientist",
+            description = "Watched 10+ science fiction movies",
+            badge_image = "badges/mad_scientist.png"
+          )
+          mark_notification_shown("mad_scientist")
+        }
+      }
+    }
+    
+    # 16. Perfectionist
+    if (!rv$badge_progress$perfectionist && nrow(items) > 0) {
+      all_rated <- all(!is.na(items$rating) & items$rating > 0)
+      rv$badge_progress$perfectionist <- all_rated
+      if (rv$badge_progress$perfectionist && !"perfectionist" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "perfectionist")
+        if (!has_shown_notification("perfectionist")) {
+          newly_unlocked[["perfectionist"]] <- list(
+            name = "Perfectionist",
+            description = "Rated every item in your library",
+            badge_image = "badges/perfectionist.png"
+          )
+          mark_notification_shown("perfectionist")
+        }
+      }
+    }
+    
+    # 17. Numerical
+    if (!rv$badge_progress$numerical && nrow(items) > 0) {
+      has_number_title <- any(grepl("\\d", items$title))
+      rv$badge_progress$numerical <- has_number_title
+      if (rv$badge_progress$numerical && !"numerical" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "numerical")
+        if (!has_shown_notification("numerical")) {
+          newly_unlocked[["numerical"]] <- list(
+            name = "Numerical",
+            description = "Watched an item with numbers in the title",
+            badge_image = "badges/numerical.png"
+          )
+          mark_notification_shown("numerical")
+        }
+      }
+    }
+    
+    # 18. The Developer's Cut
+    if (!rv$badge_progress$developers_cut && nrow(items) > 0) {
+      has_interstellar <- any(grepl("interstellar", items$title, ignore.case = TRUE) & 
+                                items$watch_status == "Watched")
+      rv$badge_progress$developers_cut <- has_interstellar
+      if (rv$badge_progress$developers_cut && !"developers_cut" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "developers_cut")
+        if (!has_shown_notification("developers_cut")) {
+          newly_unlocked[["developers_cut"]] <- list(
+            name = "The Developer's Cut",
+            description = "Watched the developer's favorite movie: Interstellar",
+            badge_image = "badges/developers_cut.png"
+          )
+          mark_notification_shown("developers_cut")
+        }
+      }
+    }
+    
+    # 19. The Developer's Season
+    if (!rv$badge_progress$developers_season && nrow(items) > 0) {
+      has_walking_dead <- any(grepl("walking dead", items$title, ignore.case = TRUE) & 
+                                items$media_type == "TV Series" & 
+                                items$watch_status == "Watched")
+      rv$badge_progress$developers_season <- has_walking_dead
+      if (rv$badge_progress$developers_season && !"developers_season" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "developers_season")
+        if (!has_shown_notification("developers_season")) {
+          newly_unlocked[["developers_season"]] <- list(
+            name = "The Developer's Season",
+            description = "Watched the developer's favorite TV series: The Walking Dead",
+            badge_image = "badges/developers_season.png"
+          )
+          mark_notification_shown("developers_season")
+        }
+      }
+    }
+    
+    # 20. THE PLOTWIST BADGE
+    plotwist_rated_items <- items[grepl("plotwist|plot twist", items$title, ignore.case = TRUE) & 
+                                    items$rating >= 4 &
+                                    !is.na(items$rating), ]
+    
+    if (!rv$badge_progress$plotwist_badge && nrow(plotwist_rated_items) > 0) {
+      rv$badge_progress$plotwist_badge <- TRUE
+      rv$badge_progress$plotwist_special <- TRUE
+      if (!"plotwist_badge" %in% rv$achievements_unlocked) {
+        rv$achievements_unlocked <- c(rv$achievements_unlocked, "plotwist_badge")
+        if (!has_shown_notification("plotwist_badge")) {
+          newly_unlocked[["plotwist_badge"]] <- list(
+            name = "THE PLOTWIST BADGE",
+            description = "Rated 'Plotwist' as a movie/TV series (4+ stars)",
+            badge_image = "badges/plotwist_badge.png"
+          )
+          mark_notification_shown("plotwist_badge")
+        }
+      }
+    }
+    
+    if (!rv$badge_progress$plotwist_special) {
+      plotwist_items <- items[grepl("plotwist", items$title, ignore.case = TRUE), ]
+      if (nrow(plotwist_items) > 0) {
+        rv$badge_progress$plotwist_special <- TRUE
+      }
+    }
+    
+    # If any achievements were newly unlocked, trigger the modal
+    if (length(newly_unlocked) > 0) {
+      # Store the first newly unlocked achievement for the modal
+      achievement_id <- names(newly_unlocked)[1]
+      rv$achievement_to_show <- list(
+        id = achievement_id,
+        details = newly_unlocked[[achievement_id]]
+      )
+    }
+  }
+  
+  # Check achievements when items change
+  observeEvent(rv$refresh, {
+    check_achievements()
+  })
+  
+  # Initialize achievements on app start
+  observe({
+    if (rv$authenticated) {
+      check_achievements()
+    }
+  })
+  
   # Rest of the server code (existing functionality)
   observeEvent(input$nav_home, { 
     rv$page <- "home" 
@@ -2221,6 +2758,11 @@ server <- function(input, output, session) {
     updateNavButtons("recommendations")
     session$sendCustomMessage("scrollToTop", list())
   })
+  observeEvent(input$nav_achievements, { 
+    rv$page <- "achievements" 
+    updateNavButtons("achievements")
+    session$sendCustomMessage("scrollToTop", list())
+  })
   
   observeEvent(input$show_add_modal, { rv$show_modal <- TRUE })
   observeEvent(input$close_add_modal, { 
@@ -2229,7 +2771,8 @@ server <- function(input, output, session) {
     rv$current_tmdb_id <- NULL
     rv$is_fetching_season <- FALSE
     rv$calculated_total_episodes_watched <- 0
-    rv$modal_source <- "manual"  # Reset modal source
+    rv$modal_source <- "manual"
+    rv$modal_tmdb_id <- NULL
   })
   
   observeEvent(input$close_details_modal, { 
@@ -2314,6 +2857,7 @@ server <- function(input, output, session) {
     rv$edit_current_tmdb_id <- NULL
     rv$edit_is_fetching_season <- FALSE
     rv$edit_calculated_total_episodes_watched <- 0
+    rv$edit_modal_tmdb_id <- NULL
   })
   
   # NEW: Handle delete button click
@@ -2915,30 +3459,34 @@ server <- function(input, output, session) {
             }
           }
           
-          # Store TMDB ID in a hidden field for later use
+          # CRITICAL FIX: Store TMDB ID in a reactive value and update a hidden input
+          rv$modal_tmdb_id <- tmdb_id
+          
+          # Update hidden input field
           insertUI(
             selector = "#modal_title",
             where = "afterEnd",
-            ui = tags$input(type = "hidden", id = "modal_tmdb_id", value = tmdb_id)
+            ui = tags$input(type = "hidden", id = "modal_tmdb_id", value = tmdb_id),
+            immediate = TRUE
           )
           
           # Update JavaScript functions
           session$sendCustomMessage(
             type = "eval",
             message = "setTimeout(function() { 
-              if (typeof updateModalDisplay === 'function') { 
-                updateModalDisplay(false); 
-              }
-              if (typeof updateTVSeriesFields === 'function') { 
-                updateTVSeriesFields(false); 
-              }
-              if (typeof updateMovieDurationFields === 'function') {
-                updateMovieDurationFields(false);
-              }
-              if (typeof updateEpisodeIndicator === 'function') {
-                updateEpisodeIndicator(false);
-              }
-            }, 100);"
+            if (typeof updateModalDisplay === 'function') { 
+              updateModalDisplay(false); 
+            }
+            if (typeof updateTVSeriesFields === 'function') { 
+              updateTVSeriesFields(false); 
+            }
+            if (typeof updateMovieDurationFields === 'function') {
+              updateMovieDurationFields(false);
+            }
+            if (typeof updateEpisodeIndicator === 'function') {
+              updateEpisodeIndicator(false);
+            }
+          }, 100);"
           )
           
           showNotification("✅ TMDB data loaded successfully! You can edit any field.", 
@@ -3020,30 +3568,34 @@ server <- function(input, output, session) {
             }
           }
           
-          # Store TMDB ID in a hidden field for later use
+          # CRITICAL FIX: Store TMDB ID in a reactive value and update a hidden input
+          rv$edit_modal_tmdb_id <- tmdb_id
+          
+          # Update hidden input field
           insertUI(
             selector = "#edit_modal_title",
             where = "afterEnd",
-            ui = tags$input(type = "hidden", id = "edit_modal_tmdb_id", value = tmdb_id)
+            ui = tags$input(type = "hidden", id = "edit_modal_tmdb_id", value = tmdb_id),
+            immediate = TRUE
           )
           
           # Update JavaScript functions
           session$sendCustomMessage(
             type = "eval",
             message = "setTimeout(function() { 
-              if (typeof updateModalDisplay === 'function') { 
-                updateModalDisplay(true); 
-              }
-              if (typeof updateTVSeriesFields === 'function') { 
-                updateTVSeriesFields(true); 
-              }
-              if (typeof updateMovieDurationFields === 'function') {
-                updateMovieDurationFields(true);
-              }
-              if (typeof updateEpisodeIndicator === 'function') {
-                updateEpisodeIndicator(true);
-              }
-            }, 100);"
+            if (typeof updateModalDisplay === 'function') { 
+              updateModalDisplay(true); 
+            }
+            if (typeof updateTVSeriesFields === 'function') { 
+              updateTVSeriesFields(true); 
+            }
+            if (typeof updateMovieDurationFields === 'function') {
+              updateMovieDurationFields(true);
+            }
+            if (typeof updateEpisodeIndicator === 'function') {
+              updateEpisodeIndicator(true);
+            }
+          }, 100);"
           )
           
           showNotification("✅ TMDB data loaded successfully! You can edit any field.", 
@@ -4341,6 +4893,7 @@ server <- function(input, output, session) {
                       Shiny.setInputValue('modal_watched_duration', %d);
                       Shiny.setInputValue('modal_status', 'Unwatched');
                       Shiny.setInputValue('modal_rating_value', 0);
+                      Shiny.setInputValue('modal_tmdb_id', %d);
                       Shiny.setInputValue('show_add_modal', Math.random());
                       Shiny.setInputValue('close_rec_details_modal', Math.random());
                     ",
@@ -4364,6 +4917,202 @@ server <- function(input, output, session) {
                       )
              )
     )
+  })
+  
+  # ==============================================================================
+  # ACHIEVEMENT MODAL
+  # ==============================================================================
+  
+  output$achievement_modal <- renderUI({
+    if (is.null(rv$achievement_to_show)) return(NULL)
+    
+    achievement <- rv$achievement_to_show$details
+    achievement_id <- rv$achievement_to_show$id
+    
+    # Enhanced JavaScript for sparkle and particle effects
+    sparkle_js <- "
+  setTimeout(function() {
+    // Create enhanced particle system
+    const badgeContainer = document.querySelector('.achievement-badge-container');
+    if (badgeContainer) {
+      const colors = ['#FFD700', '#00A8E8', '#06D6A0', '#EF476F', '#FFB800'];
+      
+      for (let i = 0; i < 25; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        
+        // Random size between 3-8px
+        const size = Math.random() * 5 + 3;
+        particle.style.width = size + 'px';
+        particle.style.height = size + 'px';
+        
+        // Random position
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.top = Math.random() * 100 + '%';
+        
+        // Random color
+        particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        
+        // Random animation
+        const duration = 2 + Math.random() * 3;
+        const delay = Math.random() * 2;
+        particle.style.animation = `particleFloatEnhanced ${duration}s ease-in-out ${delay}s infinite`;
+        particle.style.opacity = Math.random() * 0.6 + 0.4;
+        particle.style.transform = `scale(${Math.random() * 0.7 + 0.3})`;
+        
+        badgeContainer.appendChild(particle);
+      }
+      
+      // Add enhanced particle animation CSS
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes particleFloatEnhanced {
+          0%, 100% { 
+            transform: translate(0, 0) rotate(0deg) scale(var(--scale, 1)); 
+            opacity: 0.4;
+          }
+          25% { 
+            transform: translate(-15px, -25px) rotate(90deg) scale(var(--scale, 1.2)); 
+            opacity: 0.8;
+          }
+          50% { 
+            transform: translate(10px, -40px) rotate(180deg) scale(var(--scale, 0.8)); 
+            opacity: 1;
+          }
+          75% { 
+            transform: translate(15px, -20px) rotate(270deg) scale(var(--scale, 1.1)); 
+            opacity: 0.6;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    // Add subtle sound effect for modal opening
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioContext.currentTime;
+      
+      // Create bell-like sound
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.setValueAtTime(523.25, now); // C5
+      oscillator.frequency.exponentialRampToValueAtTime(659.25, now + 0.5); // E5
+      
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(0.1, now + 0.1);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+      
+      oscillator.start(now);
+      oscillator.stop(now + 1.5);
+      
+    } catch (e) {
+      // Audio not supported or user blocked it
+      console.log('Audio not available');
+    }
+    
+    // Add slight shake animation to the modal
+    const modal = document.querySelector('.achievement-modal');
+    if (modal) {
+      modal.style.animation = 'modalSlideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, modalShake 0.5s ease 0.6s';
+      
+      // Add shake animation
+      const shakeStyle = document.createElement('style');
+      shakeStyle.textContent = `
+        @keyframes modalShake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
+          20%, 40%, 60%, 80% { transform: translateX(2px); }
+        }
+      `;
+      document.head.appendChild(shakeStyle);
+    }
+    
+  }, 150);
+  "
+    
+    # Send the enhanced JavaScript
+    session$sendCustomMessage(type = "eval", message = sparkle_js)
+    
+    tags$div(class = "achievement-modal-overlay",
+             tags$div(class = "achievement-modal",
+                      
+                      tags$div(class = "achievement-count",
+                               paste0(length(rv$achievements_unlocked), "/20")
+                      ),
+                      
+                      tags$div(class = "achievement-modal-tag",
+                               tags$span("✨ "),
+                               "ACHIEVEMENT UNLOCKED!",
+                               tags$span(" ✨")
+                      ),
+                      
+                      tags$div(class = "achievement-badge-container",
+                               tags$img(src = achievement$badge_image,
+                                        class = "achievement-badge-image",
+                                        alt = paste(achievement$name, "Badge"),
+                                        onerror = "this.src='https://via.placeholder.com/180/1A1F29/FFD700?text=BADGE';"),
+                               
+                               # Enhanced sparkle effects
+                               tags$div(class = "sparkle sparkle-1"),
+                               tags$div(class = "sparkle sparkle-2"),
+                               tags$div(class = "sparkle sparkle-3"),
+                               tags$div(class = "sparkle sparkle-4"),
+                               tags$div(class = "sparkle sparkle-5")
+                      ),
+                      
+                      tags$h1(class = "achievement-modal-title",
+                              achievement$name
+                      ),
+                      
+                      tags$p(class = "achievement-modal-subtitle",
+                             "A New Milestone Unlocked! 🎯"
+                      ),
+                      
+                      tags$p(class = "achievement-modal-description",
+                             achievement$description
+                      ),
+                      
+                      tags$div(class = "achievement-modal-buttons",
+                               tags$button(class = "achievement-close-btn",
+                                           onclick = "Shiny.setInputValue('close_achievement_modal', Math.random());",
+                                           tags$span("Continue Exploring")
+                               ),
+                               
+                               tags$button(class = "achievement-view-btn",
+                                           onclick = paste0("Shiny.setInputValue('close_achievement_modal', Math.random()); ",
+                                                            "Shiny.setInputValue('nav_achievements', Math.random()); ",
+                                                            "Shiny.setInputValue('view_all_achievements', Math.random());"),
+                                           tags$span("View All Achievements")
+                               )
+                      )
+             )
+    )
+  })
+  
+  # ==============================================================================
+  # CLOSE ACHIEVEMENT MODAL HANDLER
+  # ==============================================================================
+  
+  observeEvent(input$close_achievement_modal, {
+    rv$achievement_to_show <- NULL
+  })
+  
+  # ==============================================================================
+  # HANDLE VIEW ALL ACHIEVEMENTS BUTTON
+  # ==============================================================================
+  
+  observeEvent(input$view_all_achievements, {
+    # This is triggered when the "View All Achievements" button is clicked
+    # The navigation is already handled by the onclick event
+    # We can add additional logic here if needed
+    showNotification("Redirecting to Achievements...", type = "message", duration = 2)
   })
   
   # Initialize modal display when opened (Add Modal)
@@ -4502,9 +5251,21 @@ server <- function(input, output, session) {
     
     # Get TMDB ID if available
     tmdb_id <- NULL
-    if (!is.null(input$modal_tmdb_id)) {
+    # First check reactive value
+    if (!is.null(rv$modal_tmdb_id)) {
+      tmdb_id <- as.numeric(rv$modal_tmdb_id)
+    } 
+    # Then check hidden input field
+    else if (!is.null(input$modal_tmdb_id) && input$modal_tmdb_id != "") {
       tmdb_id <- as.numeric(input$modal_tmdb_id)
     }
+    # Also check from current_tmdb_id reactive value
+    else if (!is.null(rv$current_tmdb_id)) {
+      tmdb_id <- as.numeric(rv$current_tmdb_id)
+    }
+    
+    # Debug: Log the TMDB ID retrieval
+    cat("TMDB ID retrieved for insertion:", tmdb_id, "\n")
     
     # Initialize variables for both movie and TV series
     total_duration <- 0
@@ -4640,6 +5401,14 @@ server <- function(input, output, session) {
       genre_str <- paste(input$modal_genre, collapse = ", ")
       date_watched <- if (input$modal_status == "Watched") Sys.Date() else NULL
       
+      cat("=== FINAL SUBMISSION DEBUG ===\n")
+      cat("Title:", input$modal_title, "\n")
+      cat("TMDB ID to store:", tmdb_id, "\n")
+      cat("TMDB ID type:", class(tmdb_id), "\n")
+      cat("TMDB ID is NULL:", is.null(tmdb_id), "\n")
+      cat("TMDB ID is NA:", is.na(tmdb_id), "\n")
+      cat("=====================\n")
+      
       # SQL query with all fields
       query <- sprintf(
         "INSERT INTO movies_series 
@@ -4770,9 +5539,25 @@ server <- function(input, output, session) {
     
     # Get TMDB ID if available
     tmdb_id <- NULL
-    if (!is.null(input$edit_modal_tmdb_id)) {
+    # First check reactive value
+    if (!is.null(rv$edit_modal_tmdb_id)) {
+      tmdb_id <- as.numeric(rv$edit_modal_tmdb_id)
+    } 
+    # Then check hidden input field
+    else if (!is.null(input$edit_modal_tmdb_id) && input$edit_modal_tmdb_id != "") {
       tmdb_id <- as.numeric(input$edit_modal_tmdb_id)
     }
+    # Also check from edit_current_tmdb_id reactive value
+    else if (!is.null(rv$edit_current_tmdb_id)) {
+      tmdb_id <- as.numeric(rv$edit_current_tmdb_id)
+    }
+    # Finally, check if it's in the editing item
+    else if (!is.null(rv$editing_item$tmdb_id) && !is.na(rv$editing_item$tmdb_id)) {
+      tmdb_id <- as.numeric(rv$editing_item$tmdb_id)
+    }
+    
+    # Debug: Log the TMDB ID retrieval
+    cat("EDIT - TMDB ID retrieved for update:", tmdb_id, "\n")
     
     # Initialize variables for both movie and TV series
     total_duration <- 0
@@ -5019,6 +5804,7 @@ server <- function(input, output, session) {
     else if (rv$page == "stats") render_stats()  # NEW: Stats page
     else if (rv$page == "library") render_library()
     else if (rv$page == "recommendations") render_recommendations_page()
+    else if (rv$page == "achievements") render_achievements()
   })
   
   # ==============================================================================
@@ -6122,6 +6908,285 @@ server <- function(input, output, session) {
       
       # Bottom Pagination
       render_pagination(rv$rec_page, rv$rec_total_pages, "rec")
+    )
+  }
+  
+  # Achievements Page - ENLARGED 5-COLUMN DESIGN
+  render_achievements <- function() {
+    tagList(
+      tags$div(class = "achievements-page",
+               tags$div(class = "section-header",
+                        tags$h2(class = "section-title", "Hall of Fame")
+               ),
+               
+               # Stats Overview - Centered
+               tags$div(class = "achievement-stats",
+                        tags$div(class = "achievement-stat-card",
+                                 tags$div(class = "stat-number", length(rv$achievements_unlocked)),
+                                 tags$div(class = "stat-label", "Unlocked")
+                        ),
+                        tags$div(class = "achievement-stat-card",
+                                 tags$div(class = "stat-number", 
+                                          paste0(round(length(rv$achievements_unlocked) / 20 * 100), "%")),
+                                 tags$div(class = "stat-label", "Progress")
+                        )
+               ),
+               
+               # Badges Grid - 5 Columns, No Background
+               tags$div(class = "badges-grid-five-col-clean",
+                        # Badge 1: First Watch
+                        tags$div(class = paste("badge-card-clean", if("first_watch" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "first_watch",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/first_watch.png",
+                                                   class = "badge-image-large",
+                                                   alt = "First Watch Badge")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "First Watch"),
+                                 tags$p(class = "badge-description-large", "Added your first item")
+                        ),
+                        
+                        # Badge 2: Media Mogul
+                        tags$div(class = paste("badge-card-clean", if("media_mogul" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "media_mogul",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/media_mogul.png", 
+                                                   class = "badge-image-large",
+                                                   alt = "Media Mogul Badge")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Media Mogul"),
+                                 tags$p(class = "badge-description-large", "Add 100 items to your library")
+                        ),
+                        
+                        # Badge 3: Marathon Master
+                        tags$div(class = paste("badge-card-clean", if("marathon_master" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "marathon_master",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/marathon_master.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Marathon Master Badge")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Marathon Master"),
+                                 tags$p(class = "badge-description-large", "Completed a TV series with 50+ episodes")
+                        ),
+                        
+                        # Badge 4: Critic in Training
+                        tags$div(class = paste("badge-card-clean", if("critic_training" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "critic_training",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/critic_training.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Critic in Training Badge")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Critic in Training"),
+                                 tags$p(class = "badge-description-large", "Rated 10 items")
+                        ),
+                        
+                        # Badge 5: Harsh Critic
+                        tags$div(class = paste("badge-card-clean", if("harsh_critic" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "harsh_critic",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/harsh_critic.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Harsh Critic Badge")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Harsh Critic"),
+                                 tags$p(class = "badge-description-large", "Gave a 1-star rating")
+                        ),
+                        
+                        # Badge 6: Genre Sampler
+                        tags$div(class = paste("badge-card-clean", if("genre_sampler" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "genre_sampler",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/genre_sampler.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Genre Sampler Badge")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Genre Sampler"),
+                                 tags$p(class = "badge-description-large", "Watched items from 5+ different genres")
+                        ),
+                        
+                        # Badge 7: Time Traveler
+                        tags$div(class = paste("badge-card-clean", if("time_traveler" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "time_traveler",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/time_traveler.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Time Traveler Badge")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Time Traveler"),
+                                 tags$p(class = "badge-description-large", "Watched something from 5 different decades")
+                        ),
+                        
+                        # Badge 8: Classic Connoisseur
+                        tags$div(class = paste("badge-card-clean", if("classic_connoisseur" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "classic_connoisseur",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/classic_connoisseur.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Classic Connoisseur Badge")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Classic Connoisseur"),
+                                 tags$p(class = "badge-description-large", "Add item from 1970s or earlier")
+                        ),
+                        
+                        # Badge 9: Streak Keeper
+                        tags$div(class = paste("badge-card-clean", if("streak_keeper" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "streak_keeper",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/streak_keeper.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Streak Keeper Badge")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Streak Keeper"),
+                                 tags$p(class = "badge-description-large", "Watch 7 days in a row")
+                        ),
+                        
+                        # Badge 10: Essayist
+                        tags$div(class = paste("badge-card-clean", if("essayist" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "essayist",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/essayist.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Essayist")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Essayist"),
+                                 tags$p(class = "badge-description-large", "Write a 500+ character review")
+                        ),
+                        
+                        # Badge 11: Haiku Reviewer
+                        tags$div(class = paste("badge-card-clean", if("haiku_reviewer" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "haiku_reviewer",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/haiku_reviewer.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Haiku Reviewer")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Haiku Reviewer"),
+                                 tags$p(class = "badge-description-large", "Write a review under 100 characters")
+                        ),
+                        
+                        # Badge 12: Actor Apprentice
+                        tags$div(class = paste("badge-card-clean", if("actor_apprentice" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "actor_apprentice",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/actor_apprentice.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Actor Apprentice")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Actor Apprentice"),
+                                 tags$p(class = "badge-description-large", "Watch 5+ works by one actor")
+                        ),
+                        
+                        # Badge 13: Director Devotee
+                        tags$div(class = paste("badge-card-clean", if("director_devotee" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "director_devotee",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/director_devotee.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Director Devotee")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Director Devotee"),
+                                 tags$p(class = "badge-description-large", "Watch 5+ works by one director")
+                        ),
+                        
+                        # Badge 14: Romance Royalty
+                        tags$div(class = paste("badge-card-clean", if("romance_royalty" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "romance_royalty",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/romance_royalty.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Romance Royalty")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Romance Royalty"),
+                                 tags$p(class = "badge-description-large", "Watch 10+ romance movies")
+                        ),
+                        
+                        # Badge 15: Mad Scientist
+                        tags$div(class = paste("badge-card-clean", if("mad_scientist" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "mad_scientist",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/mad_scientist.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Mad Scientist")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Mad Scientist"),
+                                 tags$p(class = "badge-description-large", "Watch 10+ sci-fi movies")
+                        ),
+                        
+                        # Badge 16: Perfectionist
+                        tags$div(class = paste("badge-card-clean", if("perfectionist" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "perfectionist",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/perfectionist.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Perfectionist")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Perfectionist"),
+                                 tags$p(class = "badge-description-large", "Rate every item in your library")
+                        ),
+                        
+                        # Badge 17: Numerical
+                        tags$div(class = paste("badge-card-clean", if("numerical" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "numerical",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/numerical.png",
+                                                   class = "badge-image-large",
+                                                   alt = "Numerical")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "Numerical"),
+                                 tags$p(class = "badge-description-large", "Watch items with numbers in title")
+                        ),
+                        
+                        # Badge 18: The Developer's Cut (SECRET)
+                        tags$div(class = paste("badge-card-clean developers-cut", if("developers_cut" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "developers_cut",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/developers_cut.png",
+                                                   class = "badge-image-large",
+                                                   alt = "The Developer's Cut")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "The Developer's Cut"),
+                                 if("developers_cut" %in% rv$achievements_unlocked) {
+                                   tags$p(class = "badge-description-large", "Watch the developer's favorite movie")
+                                 } else {
+                                   tags$p(class = "badge-description-large", "???")
+                                 }
+                        ),
+                        
+                        # Badge 19: The Developer's Season (SECRET)
+                        tags$div(class = paste("badge-card-clean developers-season", if("developers_season" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "developers_season",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/developers_season.png",
+                                                   class = "badge-image-large",
+                                                   alt = "The Developer's Season")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "The Developer's Season"),
+                                 if("developers_season" %in% rv$achievements_unlocked) {
+                                   tags$p(class = "badge-description-large", "Complete the developer's favorite TV series")
+                                 } else {
+                                   tags$p(class = "badge-description-large", "???")
+                                 }
+                        ),
+                        
+                        # Badge 20: THE PLOTWIST BADGE (MYSTERY/SECRET)
+                        tags$div(class = paste("badge-card-clean plotwist-ultimate", if("plotwist_badge" %in% rv$achievements_unlocked) "unlocked" else "locked"),
+                                 `data-badge-id` = "plotwist_badge",
+                                 tags$div(class = "badge-icon-large",
+                                          tags$img(src = "badges/plotwist_badge.png",
+                                                   class = "badge-image-large",
+                                                   alt = "THE PLOTWIST BADGE")
+                                 ),
+                                 tags$h3(class = "badge-title-large", "THE PLOTWIST"),
+                                 if("plotwist_badge" %in% rv$achievements_unlocked) {
+                                   tags$p(class = "badge-description-large", "Rate 'Plotwist' as a movie/TV series (4+ stars)")
+                                 } else {
+                                   tags$p(class = "badge-description-large", "???")  # Mystery description when locked
+                                 }
+                        )
+               )
+      )
     )
   }
   
