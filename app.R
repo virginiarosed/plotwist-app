@@ -1943,7 +1943,7 @@ function updateMovieDurationFields(isEditModal = false) {
     "))
   ),
   useShinyjs(),
-
+  
   uiOutput("app_ui")
 )
 
@@ -1967,7 +1967,7 @@ server <- function(input, output, session) {
     current_user = NULL,
     show_login_modal = FALSE,
     show_user_menu = FALSE,
-
+    
     page = "home",
     show_modal = FALSE,
     show_details_modal = FALSE,
@@ -2114,7 +2114,7 @@ server <- function(input, output, session) {
       rv$authenticated <- TRUE
       rv$current_user <- user
       rv$show_login_modal <- FALSE
-
+      
       observe({
         isolate({
           delay(500, {
@@ -2205,7 +2205,7 @@ server <- function(input, output, session) {
       )
     }
   })
-
+  
   output$user_menu <- renderUI({
     if (!rv$authenticated || !rv$show_user_menu) return(NULL)
     
@@ -2231,10 +2231,10 @@ server <- function(input, output, session) {
              )
     )
   })
-
+  
   render_landing_page <- function() {
     tagList(
-
+      
       tags$div(class = "hero",
                
                tags$div(class = "logo-animation-container",
@@ -2761,9 +2761,9 @@ server <- function(input, output, session) {
         rv$badge_progress$plotwist_special <- TRUE
       }
     }
-
+    
     if (length(newly_unlocked) > 0) {
-
+      
       achievement_id <- names(newly_unlocked)[1]
       rv$achievement_to_show <- list(
         id = achievement_id,
@@ -2783,7 +2783,7 @@ server <- function(input, output, session) {
       check_achievements()
     }
   })
-
+  
   observeEvent(input$nav_home, { 
     rv$page <- "home" 
     updateNavButtons("home")
@@ -2826,7 +2826,7 @@ server <- function(input, output, session) {
     rv$selected_item <- NULL
     rv$collection_data <- NULL
   })
-
+  
   observeEvent(input$show_rec_details, {
     if (!is.null(input$show_rec_details) && input$show_rec_details != "") {
       tryCatch({
@@ -2834,10 +2834,10 @@ server <- function(input, output, session) {
         tmdb_id <- as.numeric(data$tmdb_id)
         media_type <- data$media_type
         title <- data$title
-
+        
         rv$rec_details_loading <- TRUE
         rv$show_rec_details_modal <- TRUE
-
+        
         rv$modal_source <- "recommendations"
         
         # Fetch details from TMDB
@@ -2990,40 +2990,20 @@ server <- function(input, output, session) {
           if (nrow(item) == 1) {
             cat("Item title:", item$title[1], "\n")
             cat("Watch status:", item$watch_status[1], "\n")
-            cat("TMDB ID:", item$tmdb_id[1], "\n")
-            cat("Media type:", item$media_type[1], "\n")
             
             rv$selected_item <- item[1, ]
             rv$show_details_modal <- TRUE
             
-            # ALWAYS fetch collection data when modal opens (regardless of watch status)
-            # Reset collection data first to clear any previous data
-            rv$collection_data <- NULL
-            
-            # Fetch collection data if TMDB ID exists and is valid
-            if (!is.na(item$tmdb_id[1]) && !is.null(item$tmdb_id[1]) && 
-                item$tmdb_id[1] != "" && item$tmdb_id[1] > 0) {
+            # Fetch collection data if TMDB ID exists
+            if (!is.na(item$tmdb_id[1]) && !is.null(item$tmdb_id[1])) {
               cat("Fetching collection for TMDB ID:", item$tmdb_id[1], "\n")
-              
-              # Use tryCatch to handle any TMDB API errors gracefully
-              tryCatch({
-                collection_data <- get_tmdb_collection(item$tmdb_id[1], item$media_type[1])
-                
-                if (!is.null(collection_data) && !is.null(collection_data$items) && 
-                    length(collection_data$items) > 0) {
-                  rv$collection_data <- collection_data
-                  cat("Collection found:", collection_data$collection_name, "\n")
-                  cat("Number of items:", length(collection_data$items), "\n")
-                } else {
-                  cat("No collection found or collection is empty\n")
-                  rv$collection_data <- NULL
-                }
-              }, error = function(e) {
-                cat("Error fetching collection from TMDB:", e$message, "\n")
-                rv$collection_data <- NULL
-              })
+              rv$collection_data <- get_tmdb_collection(item$tmdb_id[1], item$media_type[1])
+              if (!is.null(rv$collection_data)) {
+                cat("Collection found:", rv$collection_data$collection_name, "\n")
+              } else {
+                cat("No collection found\n")
+              }
             } else {
-              cat("No valid TMDB ID, skipping collection fetch\n")
               rv$collection_data <- NULL
             }
             
@@ -3094,41 +3074,10 @@ server <- function(input, output, session) {
     }
   })
   
-  observeEvent(rv$refresh, {
-    # Only fetch if details modal is open and we have a selected item
-    if (rv$show_details_modal && !is.null(rv$selected_item)) {
-      cat("=== REFRESH TRIGGERED, RE-FETCHING COLLECTION ===\n")
-      
-      item <- rv$selected_item
-      
-      # Fetch collection data if TMDB ID exists
-      if (!is.na(item$tmdb_id) && !is.null(item$tmdb_id) && 
-          item$tmdb_id != "" && item$tmdb_id > 0) {
-        cat("Re-fetching collection for TMDB ID:", item$tmdb_id, "\n")
-        
-        tryCatch({
-          collection_data <- get_tmdb_collection(item$tmdb_id, item$media_type)
-          
-          if (!is.null(collection_data) && !is.null(collection_data$items) && 
-              length(collection_data$items) > 0) {
-            rv$collection_data <- collection_data
-            cat("Collection re-fetched:", collection_data$collection_name, "\n")
-          } else {
-            cat("No collection found on re-fetch\n")
-            rv$collection_data <- NULL
-          }
-        }, error = function(e) {
-          cat("Error re-fetching collection:", e$message, "\n")
-          rv$collection_data <- NULL
-        })
-      }
-    }
-  })
-
   updateNavButtons <- function(active_page) {
     session$sendCustomMessage(type = "updateNavButtons", message = list(active = active_page))
   }
-
+  
   observe({
     updateNavButtons(rv$page)
   })
@@ -3141,7 +3090,7 @@ server <- function(input, output, session) {
     dbDisconnect(con)
     return(data)
   })
-
+  
   get_existing_titles_and_ids <- reactive({
     items <- get_all_items()
     if (nrow(items) == 0) {
@@ -3437,13 +3386,13 @@ server <- function(input, output, session) {
     
     rv$tmdb_results <- results
     rv$tmdb_loading <- FALSE
-
+    
     if (!is.null(results) && length(results) > 0) {
       cat("Building HTML for", length(results), "results\n")
       suggestions_html <- ""
       for (i in seq_along(results)) {
         result <- results[[i]]
-
+        
         safe_title <- gsub("'", "\\\\'", result$title)
         safe_title <- gsub('"', '\\\\"', safe_title)
         
@@ -3464,7 +3413,7 @@ server <- function(input, output, session) {
       cat("No results found\n")
       suggestions_html <- '<div class="suggestion-empty">No results found in TMDB. Try a different search term.</div>'
     }
-
+    
     cat("Sending suggestions...\n")
     session$sendCustomMessage(
       type = "tmdb_suggestions",
@@ -3497,7 +3446,7 @@ server <- function(input, output, session) {
     cat("Results received:", length(results), "items\n")
     
     rv$edit_tmdb_results <- results
-
+    
     if (!is.null(results) && length(results) > 0) {
       cat("Building HTML for edit modal", length(results), "results\n")
       suggestions_html <- ""
@@ -3600,7 +3549,7 @@ server <- function(input, output, session) {
               updateNumericInput(session, "modal_episodes_current_season", value = 10)
             }
           }
-
+          
           session$sendCustomMessage(
             type = "eval",
             message = "setTimeout(function() { 
@@ -3731,15 +3680,15 @@ server <- function(input, output, session) {
   
   # Handle manual input for current season
   observeEvent(input$modal_current_season, {
-
+    
     if (!is.null(input$modal_current_season)) {
       new_value <- as.numeric(input$modal_current_season)
       old_value <- rv$tv_current_season
-
+      
       if (is.na(new_value) || new_value == old_value) return()
-
+      
       rv$tv_current_season <- new_value
-
+      
       session$sendCustomMessage(
         type = "eval",
         message = "setTimeout(function() { 
@@ -3751,15 +3700,15 @@ server <- function(input, output, session) {
           }
         }, 100);"
       )
-
+      
       if (!is.null(rv$current_tmdb_id) && 
           !is.null(input$modal_media_type) && 
           input$modal_media_type == "TV Series" &&
           new_value > 0 &&
           !rv$is_fetching_season) {
-
+        
         rv$is_fetching_season <- TRUE
-
+        
         delay(500, {
           tryCatch({
             # Fetch season details from TMDB
@@ -3800,15 +3749,15 @@ server <- function(input, output, session) {
   
   # Handle manual input for current season (Edit Modal)
   observeEvent(input$edit_modal_current_season, {
-
+    
     if (!is.null(input$edit_modal_current_season)) {
       new_value <- as.numeric(input$edit_modal_current_season)
       old_value <- rv$edit_tv_current_season
-
+      
       if (is.na(new_value) || new_value == old_value) return()
-
+      
       rv$edit_tv_current_season <- new_value
-
+      
       session$sendCustomMessage(
         type = "eval",
         message = "setTimeout(function() { 
@@ -3820,13 +3769,13 @@ server <- function(input, output, session) {
           }
         }, 100);"
       )
-
+      
       if (!is.null(rv$edit_current_tmdb_id) && 
           !is.null(input$edit_modal_media_type) && 
           input$edit_modal_media_type == "TV Series" &&
           new_value > 0 &&
           !rv$edit_is_fetching_season) {
-
+        
         rv$edit_is_fetching_season <- TRUE
         
         # Use a delay to prevent too many API calls during typing
@@ -3899,7 +3848,7 @@ server <- function(input, output, session) {
     if (!is.null(input$edit_modal_current_episode)) {
       new_value <- as.numeric(input$edit_modal_current_episode)
       old_value <- rv$edit_tv_current_episode
-
+      
       if (is.na(new_value) || new_value == old_value) return()
       
       rv$edit_tv_current_episode <- new_value
@@ -4840,31 +4789,15 @@ server <- function(input, output, session) {
                                },
                                
                                # ==============================================================================
-                               # COLLECTION SECTION - ALWAYS SHOW IF AVAILABLE
+                               # COLLECTION SECTION - Always show if we have collection data
                                # ==============================================================================
                                
-                               # Check if collection data exists and has items
-                               if (!is.null(rv$collection_data) && 
-                                   !is.null(rv$collection_data$items) && 
-                                   length(rv$collection_data$items) > 0) {
-                                 
-                                 # Get collection name or use default
-                                 collection_name <- if (!is.null(rv$collection_data$collection_name) && 
-                                                        rv$collection_data$collection_name != "") {
-                                   rv$collection_data$collection_name
-                                 } else {
-                                   if (rv$selected_item$media_type == "Movie") {
-                                     "Related Movies"
-                                   } else {
-                                     "Similar TV Series"
-                                   }
-                                 }
-                                 
+                               if (!is.null(rv$collection_data) && length(rv$collection_data$items) > 0) {
                                  tagList(
                                    tags$div(class = "details-section", style = "margin-top: 2rem;",
                                             tags$h3(class = "section-title", 
                                                     tags$i(class = "fas fa-film", style = "margin-right: 0.5rem; color: #00A8E8;"),
-                                                    collection_name),
+                                                    rv$collection_data$collection_name),
                                             
                                             tags$div(class = "collection-scroll-container",
                                                      style = "display: flex; gap: 1.5rem; overflow-x: auto; padding: 1.5rem 0; margin-top: 1rem;",
@@ -4872,7 +4805,6 @@ server <- function(input, output, session) {
                                                        # Calculate if item exists in library
                                                        con <- get_db_connection()
                                                        item_exists <- FALSE
-                                                       watch_status <- NULL
                                                        if (!is.null(con)) {
                                                          tryCatch({
                                                            check_query <- sprintf("SELECT id, watch_status FROM movies_series WHERE tmdb_id = %d", col_item$tmdb_id)
@@ -4895,20 +4827,18 @@ server <- function(input, output, session) {
                                                                 style = "min-width: 200px; flex-shrink: 0; cursor: pointer;",
                                                                 `data-tmdb-id` = col_item$tmdb_id,
                                                                 onclick = sprintf("
-                                   Shiny.setInputValue('show_collection_item', JSON.stringify({
-                                     tmdb_id: %d,
-                                     media_type: '%s',
-                                     title: '%s'
-                                   }), {priority: 'event'});
-                                 ", 
+                                    Shiny.setInputValue('show_collection_item', JSON.stringify({
+                                      tmdb_id: %d,
+                                      media_type: '%s',
+                                      title: '%s'
+                                    }), {priority: 'event'});
+                                  ", 
                                                                                   col_item$tmdb_id,
-                                                                                  rv$selected_item$media_type,
+                                                                                  item$media_type,
                                                                                   gsub("'", "\\\\'", col_item$title)),
                                                                 
                                                                 tags$img(class = "movie-poster", 
-                                                                         src = if (!is.null(col_item$poster) && col_item$poster != "") 
-                                                                           col_item$poster 
-                                                                         else "https://via.placeholder.com/200x300/1A1F29/00A8E8?text=No+Poster",
+                                                                         src = col_item$poster,
                                                                          onerror = "this.src='https://via.placeholder.com/200x300/1A1F29/00A8E8?text=No+Poster';"),
                                                                 
                                                                 if (item_exists) {
@@ -4923,19 +4853,18 @@ server <- function(input, output, session) {
                                                                 },
                                                                 
                                                                 tags$div(class = "movie-info",
-                                                                         tags$h3(class = "movie-title", 
-                                                                                 if (!is.null(col_item$title)) col_item$title else "Unknown Title"),
+                                                                         tags$h3(class = "movie-title", col_item$title),
                                                                          tags$div(class = "movie-meta",
-                                                                                  if (!is.null(col_item$year) && col_item$year != "N/A") {
+                                                                                  if (!is.na(col_item$year) && col_item$year != "N/A") {
                                                                                     tags$span(col_item$year)
                                                                                   },
-                                                                                  if (!is.null(col_item$year) && col_item$year != "N/A") {
+                                                                                  if (!is.na(col_item$year) && col_item$year != "N/A") {
                                                                                     tags$span("•")
                                                                                   },
-                                                                                  tags$span(rv$selected_item$media_type)
+                                                                                  tags$span(item$media_type)
                                                                          ),
                                                                          # TMDB Rating
-                                                                         if (!is.null(col_item$rating) && col_item$rating > 0) {
+                                                                         if (col_item$rating > 0) {
                                                                            tags$div(class = "movie-rating",
                                                                                     tags$span("⭐"),
                                                                                     tags$span(col_item$rating)
@@ -4946,17 +4875,6 @@ server <- function(input, output, session) {
                                                      })
                                             )
                                    )
-                                 )
-                               } else if (!is.null(rv$selected_item) && 
-                                          !is.na(rv$selected_item$tmdb_id) && 
-                                          rv$selected_item$tmdb_id > 0) {
-                                 # Show a message if we have a TMDB ID but no collection data
-                                 tags$div(class = "details-section", style = "margin-top: 2rem;",
-                                          tags$h3(class = "section-title", 
-                                                  tags$i(class = "fas fa-film", style = "margin-right: 0.5rem; color: #00A8E8;"),
-                                                  "Collection"),
-                                          tags$p(style = "color: #9BA3B0; font-style: italic; text-align: center; padding: 1rem;",
-                                                 "No collection or similar items found for this title.")
                                  )
                                }
                       )
@@ -5165,7 +5083,7 @@ server <- function(input, output, session) {
     
     achievement <- rv$achievement_to_show$details
     achievement_id <- rv$achievement_to_show$id
-
+    
     sparkle_js <- "
   setTimeout(function() {
 
@@ -5263,7 +5181,7 @@ server <- function(input, output, session) {
     
   }, 150);
   "
-
+    
     session$sendCustomMessage(type = "eval", message = sparkle_js)
     
     tags$div(class = "achievement-modal-overlay",
@@ -5284,7 +5202,7 @@ server <- function(input, output, session) {
                                         class = "achievement-badge-image",
                                         alt = paste(achievement$name, "Badge"),
                                         onerror = "this.src='https://via.placeholder.com/180/1A1F29/FFD700?text=BADGE';"),
-
+                               
                                tags$div(class = "sparkle sparkle-1"),
                                tags$div(class = "sparkle sparkle-2"),
                                tags$div(class = "sparkle sparkle-3"),
@@ -6173,7 +6091,7 @@ server <- function(input, output, session) {
       )
     )
   }
-
+  
   render_home <- function() {
     items <- get_all_items()
     
@@ -7029,7 +6947,7 @@ server <- function(input, output, session) {
                         else "You've already added all recommended TV series to your library! Try watching more series with different genres.")
       ))
     }
-
+    
     end_idx <- min(25, nrow(recommendations))
     
     tagList(
@@ -7389,7 +7307,7 @@ server <- function(input, output, session) {
     rv$rec_page <- 1  # Reset to page 1 when switching tabs
     rv$rec_series_clicked <- rv$rec_series_clicked + 1
   })
-
+  
   observeEvent(input$stats_all_btn, { 
     rv$stats_media_type <- "all"
   })
@@ -7405,7 +7323,7 @@ server <- function(input, output, session) {
   # ==============================================================================
   # SEARCH, SORT, AND FILTER HANDLERS
   # ==============================================================================
-
+  
   observeEvent(input$search_trigger, {
     # Update the search query
     rv$search_query <- input$search_input
@@ -7660,7 +7578,7 @@ server <- function(input, output, session) {
       rv$library_page <- input$library_go_to_page
     }
   })
-
+  
   render_movie_card <- function(item) {
     status_class <- switch(item$watch_status,
                            "Watched" = "badge-watched",
@@ -7674,7 +7592,7 @@ server <- function(input, output, session) {
     }
     
     progress_html <- NULL
-
+    
     if (item$media_type == "TV Series" && !is.na(item$total_episodes) && !is.null(item$total_episodes) && item$total_episodes > 0) {
       total_episodes_watched <- ifelse(is.na(item$total_episodes_watched) || is.null(item$total_episodes_watched) || item$total_episodes_watched < 0, 
                                        0, item$total_episodes_watched)
@@ -7705,7 +7623,7 @@ server <- function(input, output, session) {
                                 )
       )
     }
-
+    
     else if (item$media_type == "Movie" && !is.na(item$total_duration) && !is.null(item$total_duration) && item$total_duration > 0) {
       watched_duration <- ifelse(is.na(item$watched_duration) || is.null(item$watched_duration) || item$watched_duration < 0, 
                                  0, item$watched_duration)
@@ -7770,7 +7688,7 @@ server <- function(input, output, session) {
              )
     )
   }
-
+  
   observeEvent(input$hero_button_click, {
     rv$page <- "recommendations"
     updateNavButtons("recommendations")
