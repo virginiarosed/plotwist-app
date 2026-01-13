@@ -1,5 +1,5 @@
 # ==============================================================================
-# PLOTWIST - Modern Movie & TV Series Tracker with TMDB Search Integration
+# PLOTWIST
 # ==============================================================================
 
 library(shiny)
@@ -29,7 +29,6 @@ get_db_connection <- function() {
     if (db_url != "") {
       message("3. Using PRODUCTION database")
       
-      # For Render, just pass the URL directly to dbConnect
       con <- dbConnect(RPostgres::Postgres(), 
                        dbname = db_url,
                        sslmode = "require",
@@ -54,14 +53,12 @@ get_db_connection <- function() {
     message("❌ ERROR in get_db_connection(): ", e$message)
     message("Trying alternative connection method...")
     
-    # Try alternative method for Render
     tryCatch({
       db_url <- Sys.getenv("DATABASE_URL")
       if (db_url != "") {
-        # Parse the URL manually
+        
         library(stringr)
         
-        # Extract components
         pattern <- "postgresql://([^:]+):([^@]+)@([^/]+)/(.+)"
         matches <- str_match(db_url, pattern)
         
@@ -71,7 +68,6 @@ get_db_connection <- function() {
           host_port <- matches[1,4]
           dbname <- matches[1,5]
           
-          # Check if port is included
           host_parts <- str_split(host_port, ":")[[1]]
           if (length(host_parts) == 2) {
             host <- host_parts[1]
@@ -104,7 +100,27 @@ get_db_connection <- function() {
   })
 }
 
-# Run this ONCE to create the achievement_notifications table
+# Helper function to get watch date from watch_history
+get_watch_date <- function(movie_id) {
+  con <- get_db_connection()
+  if (is.null(con)) return(NULL)
+  
+  tryCatch({
+    query <- sprintf("SELECT watch_date FROM watch_history WHERE movie_id = %d ORDER BY watch_date DESC LIMIT 1", movie_id)
+    result <- dbGetQuery(con, query)
+    dbDisconnect(con)
+    
+    if (nrow(result) > 0) {
+      return(result$watch_date[1])
+    } else {
+      return(NULL)
+    }
+  }, error = function(e) {
+    if (!is.null(con)) dbDisconnect(con)
+    return(NULL)
+  })
+}
+
 migrate_achievement_notifications <- function() {
   con <- get_db_connection()
   if (is.null(con)) return()
@@ -127,7 +143,6 @@ migrate_achievement_notifications <- function() {
   })
 }
 
-# Call this once when the app starts
 migrate_achievement_notifications()
 
 TMDB_API_KEY <- "3634119368f89a9c28e1768f1a04cefd"
@@ -447,6 +462,98 @@ get_tv_season_details <- function(tmdb_id, season_number) {
   })
 }
 
+# NEW: Get collection details from TMDB
+get_tmdb_collection <- function(tmdb_id, media_type) {
+  tryCatch({
+    endpoint <- if (media_type == "Movie") "movie" else "tv"
+    
+    # First, get the item details to find collection ID
+    url <- paste0(TMDB_BASE_URL, "/", endpoint, "/", tmdb_id,
+                  "?api_key=", TMDB_API_KEY)
+    
+    response <- GET(url)
+    
+    if (status_code(response) == 200) {
+      data <- content(response, "parsed")
+      
+      # For movies, check if it belongs to a collection
+      if (media_type == "Movie" && !is.null(data$belongs_to_collection)) {
+        collection_id <- data$belongs_to_collection$id
+        
+        # Fetch collection details
+        collection_url <- paste0(TMDB_BASE_URL, "/collection/", collection_id,
+                                 "?api_key=", TMDB_API_KEY)
+        
+        collection_response <- GET(collection_url)
+        
+        if (status_code(collection_response) == 200) {
+          collection_data <- content(collection_response, "parsed")
+          
+          if (!is.null(collection_data$parts) && length(collection_data$parts) > 0) {
+            return(list(
+              collection_name = collection_data$name,
+              items = lapply(collection_data$parts, function(part) {
+                list(
+                  tmdb_id = part$id,
+                  title = part$title,
+                  year = if (!is.null(part$release_date) && part$release_date != "") {
+                    substr(part$release_date, 1, 4)
+                  } else "N/A",
+                  poster = if (!is.null(part$poster_path)) {
+                    paste0(TMDB_IMAGE_BASE, part$poster_path)
+                  } else "https://via.placeholder.com/500x750/1A1F29/00A8E8?text=No+Poster",
+                  rating = if (!is.null(part$vote_average)) round(part$vote_average, 1) else 0,
+                  overview = if (!is.null(part$overview)) part$overview else ""
+                )
+              })
+            ))
+          }
+        }
+      }
+      
+      # For TV series, get recommendations/similar shows
+      if (media_type == "TV Series") {
+        similar_url <- paste0(TMDB_BASE_URL, "/tv/", tmdb_id, "/similar",
+                              "?api_key=", TMDB_API_KEY,
+                              "&page=1")
+        
+        similar_response <- GET(similar_url)
+        
+        if (status_code(similar_response) == 200) {
+          similar_data <- content(similar_response, "parsed")
+          
+          if (!is.null(similar_data$results) && length(similar_data$results) > 0) {
+            
+            similar_items <- head(similar_data$results, 6)
+            
+            return(list(
+              collection_name = paste0("Similar to ", data$name),
+              items = lapply(similar_items, function(item) {
+                list(
+                  tmdb_id = item$id,
+                  title = item$name,
+                  year = if (!is.null(item$first_air_date) && item$first_air_date != "") {
+                    substr(item$first_air_date, 1, 4)
+                  } else "N/A",
+                  poster = if (!is.null(item$poster_path)) {
+                    paste0(TMDB_IMAGE_BASE, item$poster_path)
+                  } else "https://via.placeholder.com/500x750/1A1F29/00A8E8?text=No+Poster",
+                  rating = if (!is.null(item$vote_average)) round(item$vote_average, 1) else 0,
+                  overview = if (!is.null(item$overview)) item$overview else ""
+                )
+              })
+            ))
+          }
+        }
+      }
+    }
+    return(NULL)
+  }, error = function(e) {
+    message("Collection fetch error: ", e$message)
+    return(NULL)
+  })
+}
+
 get_movie_recommendations <- function(genre_ids, media_type = "movie", page = 1, exclude_titles = NULL, exclude_tmdb_ids = NULL) {
   tryCatch({
     if (media_type == "movie") {
@@ -556,14 +663,12 @@ ui <- fluidPage(
     isFlipped = !isFlipped;
   }
   
-  // Start animation
   setTimeout(flipLogo, 500);
   setInterval(flipLogo, 3000);
   
   return true;
 }
 
-// Try multiple times to initialize logo flip
 function tryInitLogoFlip(maxAttempts = 10, delay = 300) {
   let attempts = 0;
   
@@ -580,7 +685,7 @@ function tryInitLogoFlip(maxAttempts = 10, delay = 300) {
       setTimeout(attemptInit, delay);
     } else {
       console.log('Logo flip initialization failed after', maxAttempts, 'attempts');
-      // Add CSS fallback animation as last resort
+      
       const flipContainer = document.querySelector('.logo-flip-container');
       if (flipContainer) {
         flipContainer.classList.add('flip-animation');
@@ -591,19 +696,16 @@ function tryInitLogoFlip(maxAttempts = 10, delay = 300) {
   attemptInit();
 }
 
-// Initialize on DOM load
 document.addEventListener('DOMContentLoaded', function() {
   console.log('DOM loaded - starting logo animation setup');
   tryInitLogoFlip();
 });
 
-// Also try when Shiny connects
 $(document).on('shiny:connected', function() {
   console.log('Shiny connected - starting logo animation setup');
   setTimeout(() => tryInitLogoFlip(), 500);
 });
 
-// Backup: Try after full page load
 window.addEventListener('load', function() {
   console.log('Window loaded - final logo animation attempt');
   setTimeout(() => tryInitLogoFlip(5, 500), 1000);
@@ -617,28 +719,23 @@ window.addEventListener('load', function() {
         
         const nav = document.querySelector('.modern-nav');
         if (nav) {
-          // Start with no-scroll state
+        
           nav.classList.add('no-scroll');
           nav.classList.remove('scrolling');
           
-          // Add scroll event listener
           window.addEventListener('scroll', function() {
             if (nav) {
-              // Remove no-scroll class when scrolling starts
+            
               nav.classList.remove('no-scroll');
               nav.classList.add('scrolling');
-                            
-              // Clear existing timer
+              
               clearTimeout(scrollTimer);
               
-              // Set scrolling flag
               isScrolling = true;
               
-              // Set timer to detect when scrolling stops
               scrollTimer = setTimeout(function() {
                 isScrolling = false;
                 
-                // If we're back at the top, return to no-scroll state
                 if (window.scrollY === 0) {
                   nav.classList.remove('scrolling');
                   nav.classList.add('no-scroll');
@@ -647,7 +744,6 @@ window.addEventListener('load', function() {
             }
           });
           
-          // Initial check
           if (window.scrollY === 0) {
             nav.classList.remove('scrolling');
             nav.classList.add('no-scroll');
@@ -657,28 +753,23 @@ window.addEventListener('load', function() {
           }
         }
         
-        // Function to check scroll position and update navigation
         function checkScrollPosition() {
           if (nav) {
             if (window.scrollY === 0) {
-              // At top: No scroll state (Liquid Glass)
+              
               nav.classList.remove('scrolling');
               nav.classList.add('no-scroll');
             } else {
-              // Scrolled: Scrolling state (Simplified Glass)
+              
               nav.classList.remove('no-scroll');
               nav.classList.add('scrolling');
             }
           }
         }
         
-        // Check on load and on scroll
+        
         window.addEventListener('scroll', checkScrollPosition);
         checkScrollPosition();
-        
-// ==============================================================================
-// LAYERED CAROUSEL FUNCTIONALITY - UPDATED (Client-side only)
-// ==============================================================================
 
 let currentFeaturedIndex = 0;
 let featuredAutoAdvance = null;
@@ -686,8 +777,7 @@ let featuredAutoAdvance = null;
 function initFeaturedCarousel() {
   const featuredItems = document.querySelectorAll('.featured-poster-item');
   if (featuredItems.length === 0) return;
-  
-  // Stop any existing auto-advance
+
   if (featuredAutoAdvance) {
     clearInterval(featuredAutoAdvance);
   }
@@ -695,37 +785,34 @@ function initFeaturedCarousel() {
   // Function to update carousel positions based on active index
 function updateCarouselPositions(activeIndex) {
   const totalItems = featuredItems.length;
-  
-  // Batch DOM updates for better performance
+
   requestAnimationFrame(() => {
     for (let i = 0; i < totalItems; i++) {
       const item = featuredItems[i];
       let relativePosition;
       
-      // Calculate relative position in the 5-position display
       if (i === activeIndex) {
         relativePosition = 3; // Center position
       } else {
-        // Calculate the circular difference
+      
         let diff = (i - activeIndex + totalItems) % totalItems;
         
-        // Map to positions 1,2,4,5 based on distance
         if (diff === 1 || diff === totalItems - 1) {
-          // Adjacent items
+
           if (diff === 1) {
             relativePosition = 4; // Right inner
           } else {
             relativePosition = 2; // Left inner
           }
         } else if (diff === 2 || diff === totalItems - 2) {
-          // Two steps away
+
           if (diff === 2) {
             relativePosition = 5; // Rightmost
           } else {
             relativePosition = 1; // Leftmost
           }
         } else {
-          // For more than 5 items, hide the rest
+
           relativePosition = 0; // Hidden
           item.style.display = 'none';
           continue;
@@ -733,22 +820,19 @@ function updateCarouselPositions(activeIndex) {
       }
       
       item.style.display = 'block';
-      
-      // Remove all position classes first
+
       item.classList.remove('pos-1', 'pos-2', 'pos-3', 'pos-4', 'pos-5');
-      
-      // Add new position class with a slight delay for smoother transition
+
       setTimeout(() => {
         item.classList.add(`pos-${relativePosition}`);
-      }, 10 * Math.abs(i - activeIndex)); // Staggered delay for cascade effect
+      }, 10 * Math.abs(i - activeIndex)); 
     }
   });
   
-  // Update the background image and content
   updateFeaturedContent(activeIndex);
 }
   
-  // Function to update featured content with smooth transitions (carousel stays visible)
+  // Function to update featured content
 function updateFeaturedContent(index) {
   const featuredSection = document.querySelector('.featured-section');
   const featuredContent = document.querySelector('.featured-content');
@@ -770,10 +854,10 @@ function updateFeaturedContent(index) {
   const genre = item.getAttribute('data-genre');
   const plot = item.getAttribute('data-plot');
   
-  // Update background image with crossfade effect (background only)
+  // Update background image
   if (backdrop) {
     requestAnimationFrame(() => {
-      // Create a temporary div for background transition
+
       const tempBg = document.createElement('div');
       tempBg.style.position = 'absolute';
       tempBg.style.top = '0';
@@ -789,21 +873,18 @@ function updateFeaturedContent(index) {
       tempBg.style.pointerEvents = 'none'; // Don't interfere with carousel clicks
       
       featuredSection.appendChild(tempBg);
-      
-      // Fade in new background
+
       setTimeout(() => {
         tempBg.style.opacity = '1';
       }, 50);
-      
-      // Remove old background and temp div after transition
+
       setTimeout(() => {
         featuredSection.style.backgroundImage = `linear-gradient(to right, rgba(26, 31, 41, 0.95) 0%, rgba(26, 31, 41, 0.85) 50%, rgba(26, 31, 41, 0.3) 100%), url('${backdrop}')`;
         featuredSection.removeChild(tempBg);
       }, 850);
     });
   }
-  
-  // Update content elements with fade effects (but NOT the entire content container)
+
   setTimeout(() => {
     const logoImg = featuredContent.querySelector('.featured-logo');
     const titleFallback = featuredContent.querySelector('.featured-title-fallback');
@@ -811,8 +892,7 @@ function updateFeaturedContent(index) {
     const durationSpan = featuredContent.querySelector('.featured-duration');
     const genreSpan = featuredContent.querySelector('.featured-genre');
     const plotP = featuredContent.querySelector('.featured-plot');
-    
-    // Helper function to fade individual elements
+
     const fadeElement = (element, newValue, display = null) => {
       if (!element || !newValue) return;
       
@@ -829,8 +909,7 @@ function updateFeaturedContent(index) {
         element.style.opacity = '1';
       }, 300);
     };
-    
-    // Fade logo if it exists
+
     if (logo && logoImg) {
       logoImg.style.transition = 'opacity 0.3s ease';
       logoImg.style.opacity = '0';
@@ -867,7 +946,6 @@ function updateFeaturedContent(index) {
     fadeElement(durationSpan, duration);
     fadeElement(genreSpan, genre);
     
-    // Special handling for plot (longer text)
     if (plot && plotP) {
       plotP.style.transition = 'opacity 0.4s ease';
       plotP.style.opacity = '0';
@@ -886,8 +964,7 @@ function updateFeaturedContent(index) {
     item.addEventListener('click', function() {
       currentFeaturedIndex = index;
       updateCarouselPositions(index);
-      
-      // Reset auto-advance timer
+
       if (featuredAutoAdvance) {
         clearInterval(featuredAutoAdvance);
       }
@@ -902,8 +979,7 @@ function updateFeaturedContent(index) {
   
   // Initialize with first item in center
   updateCarouselPositions(currentFeaturedIndex);
-  
-  // Auto-advance featured carousel every 5 seconds
+
   featuredAutoAdvance = setInterval(function() {
     if (featuredItems.length > 0) {
       currentFeaturedIndex = (currentFeaturedIndex + 1) % featuredItems.length;
@@ -912,12 +988,10 @@ function updateFeaturedContent(index) {
   }, 5000);
 }
 
-// Helper function to understand the circular positioning
 function getCircularPosition(currentIndex, itemIndex, totalItems) {
-  // Calculate circular difference
+
   let diff = (itemIndex - currentIndex + totalItems) % totalItems;
-  
-  // Only show 5 items at a time
+
   if (diff > 2 && diff < totalItems - 2) {
     return 0; // Hidden
   }
@@ -933,10 +1007,8 @@ function getCircularPosition(currentIndex, itemIndex, totalItems) {
   }
 }
 
-// Initialize when DOM is ready
 setTimeout(initFeaturedCarousel, 1000);
 
-// Re-initialize when Shiny updates content
 $(document).on('shiny:value', function(event) {
   if (event.name === 'main_content') {
     setTimeout(initFeaturedCarousel, 500);
@@ -1029,7 +1101,7 @@ const observer = new MutationObserver(function(mutations) {
       });
       
       // ==============================================================================
-      // USER MENU FUNCTIONS - NEW
+      // USER MENU FUNCTIONS
       // ==============================================================================
       
       function toggleUserMenu() {
@@ -1040,7 +1112,6 @@ const observer = new MutationObserver(function(mutations) {
         Shiny.setInputValue('close_user_menu', Math.random(), {priority: 'event'});
       }
       
-      // Close user menu when clicking outside
       document.addEventListener('click', function(event) {
         const userMenuOverlay = document.querySelector('.user-menu-overlay');
         const navIcon = event.target.closest('.nav-icon');
@@ -1058,9 +1129,6 @@ const observer = new MutationObserver(function(mutations) {
       window.toggleUserMenu = toggleUserMenu;
       window.closeUserMenu = closeUserMenu;
       
-      // ==============================================================================
-      // SCROLL TO TOP WHEN SWITCHING TABS
-      // ==============================================================================
       Shiny.addCustomMessageHandler('scrollToTop', function(message) {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       });
@@ -1082,10 +1150,6 @@ const observer = new MutationObserver(function(mutations) {
         console.log('Opening delete confirmation modal for item ID:', itemId);
         Shiny.setInputValue('delete_item', itemId, {priority: 'event'});
       }
-      
-      // ==============================================================================
-      // EXISTING JAVASCRIPT FUNCTIONS (unchanged)
-      // ==============================================================================
       
       function toggleDropdown(dropdownId, event) {
         event.stopPropagation();
@@ -1150,8 +1214,7 @@ const observer = new MutationObserver(function(mutations) {
       
       function setRating(rating, isEditModal = false) {
   const prefix = isEditModal ? 'edit_' : '';
-  
-  // Try a more flexible selector
+
   const stars = document.querySelectorAll(`.${isEditModal ? 'edit-modal' : 'modal-box:not(.details-modal)'} .star-rating-input .star`);
   
   stars.forEach((star, index) => {
@@ -1161,8 +1224,7 @@ const observer = new MutationObserver(function(mutations) {
       star.classList.remove('filled');
     }
   });
-  
-  // Update the hidden input value
+
   const ratingInput = document.getElementById(`${prefix}modal_rating_value`);
   if (ratingInput) {
     ratingInput.value = rating;
@@ -1632,7 +1694,7 @@ function updateMovieDurationFields(isEditModal = false) {
       }
       
       document.addEventListener('click', function(event) {
-        // Check if click is on any suggestion or input
+
         const isSuggestion = event.target.closest('.tmdb-suggestion');
         const isTitleInput = event.target.id === 'modal_title' || 
                             event.target.id === 'edit_modal_title' ||
@@ -1644,7 +1706,7 @@ function updateMovieDurationFields(isEditModal = false) {
                                      event.target.closest('#edit_tmdb-suggestions');
         
         if (!isSuggestion && !isTitleInput && !isSuggestionContainer) {
-          // Hide both suggestion containers
+
           hideTmdbSuggestions(false);
           hideTmdbSuggestions(true);
         }
@@ -1838,13 +1900,12 @@ function updateMovieDurationFields(isEditModal = false) {
           icon.classList.add('fa-eye');
         }
       }
-      
-      // Prevent Enter key from triggering form submission in login modal
+
       document.addEventListener('keydown', function(event) {
         const loginModal = document.querySelector('.login-modal');
         if (loginModal && event.key === 'Enter' && 
             (document.getElementById('login_email') || document.getElementById('login_password'))) {
-          // If we're in login modal and Enter is pressed, trigger login instead
+
           const loginBtn = document.getElementById('login_submit_btn');
           if (loginBtn) {
             event.preventDefault();
@@ -1853,8 +1914,7 @@ function updateMovieDurationFields(isEditModal = false) {
           }
         }
       });
-      
-      // Prevent the login form from interfering with main form submissions
+
       $(document).on('click', '.login-modal .btn-primary', function(e) {
         e.stopPropagation();
         return true;
@@ -1883,8 +1943,7 @@ function updateMovieDurationFields(isEditModal = false) {
     "))
   ),
   useShinyjs(),
-  
-  # Conditional UI - show landing page or main app
+
   uiOutput("app_ui")
 )
 
@@ -1894,8 +1953,6 @@ function updateMovieDurationFields(isEditModal = false) {
 
 server <- function(input, output, session) {
   
-  # Debug: Show environment
-  # Debug: Show environment
   observe({
     db_url <- Sys.getenv("DATABASE_URL")
     message("=== DEBUG ===")
@@ -1909,9 +1966,8 @@ server <- function(input, output, session) {
     authenticated = FALSE,
     current_user = NULL,
     show_login_modal = FALSE,
-    show_user_menu = FALSE,  # NEW: User menu state
-    
-    # Existing reactive values
+    show_user_menu = FALSE,
+
     page = "home",
     show_modal = FALSE,
     show_details_modal = FALSE,
@@ -1954,20 +2010,21 @@ server <- function(input, output, session) {
     edit_is_fetching_season = FALSE,
     edit_calculated_total_episodes_watched = 0,
     
-    # Delete confirmation modal reactive values - NEW
+    # Delete confirmation modal reactive values
     show_delete_modal = FALSE,
     deleting_item = NULL,
     
-    # NEW: Recommendation details modal reactive values
+    # Recommendation details modal reactive values
     show_rec_details_modal = FALSE,
     rec_details = NULL,
     modal_source = "manual",
     rec_details_loading = FALSE,
     
-    # NEW: Featured section state
+    # Featured section state
     featured_index = 0,
     
     achievement_to_show = NULL,
+    collection_data = NULL,
     
     # Achievement reactive values
     achievements_unlocked = list(),
@@ -1998,17 +2055,17 @@ server <- function(input, output, session) {
     last_watch_date = NULL
   )
   
-  # NEW: Toggle user menu
+  # Toggle user menu
   observeEvent(input$toggle_user_menu, {
     rv$show_user_menu <- !rv$show_user_menu
   })
   
-  # NEW: Close user menu
+  # Close user menu
   observeEvent(input$close_user_menu, {
     rv$show_user_menu <- FALSE
   })
   
-  # NEW: Handle logout
+  # Handle logout
   observeEvent(input$logout_btn, {
     # Reset all authentication state
     rv$authenticated <- FALSE
@@ -2057,8 +2114,7 @@ server <- function(input, output, session) {
       rv$authenticated <- TRUE
       rv$current_user <- user
       rv$show_login_modal <- FALSE
-      
-      # CRITICAL FIX: Delay modal input reset to avoid validation trigger
+
       observe({
         isolate({
           delay(500, {
@@ -2097,9 +2153,9 @@ server <- function(input, output, session) {
       # Show main app
       tagList(
         # ==============================================================================
-        # NAVIGATION - Updated with proper classes for scroll state management
+        # NAVIGATION
         # ==============================================================================
-        tags$div(class = "modern-nav no-scroll",  # Start with no-scroll class
+        tags$div(class = "modern-nav no-scroll",
                  tags$div(class = "nav-brand",
                           tags$img(src = "logo.png", 
                                    alt = "PLOTWIST Logo",
@@ -2107,7 +2163,7 @@ server <- function(input, output, session) {
                  ),
                  tags$div(class = "nav-menu",
                           actionLink("nav_home", "Home", class = "nav-btn", `data-page` = "home"),
-                          actionLink("nav_stats", "Stats", class = "nav-btn", `data-page` = "stats"),  # NEW: Stats tab
+                          actionLink("nav_stats", "Stats", class = "nav-btn", `data-page` = "stats"),
                           actionLink("nav_library", "Library", class = "nav-btn", `data-page` = "library"),
                           actionLink("nav_recommendations", "Recommendations", class = "nav-btn", `data-page` = "recommendations"),
                           actionLink("nav_achievements", "Achievements", class = "nav-btn", `data-page` = "achievements")
@@ -2135,22 +2191,21 @@ server <- function(input, output, session) {
         # Edit Modal
         uiOutput("edit_modal"),
         
-        # Delete Confirmation Modal - NEW
+        # Delete Confirmation Modal
         uiOutput("delete_modal"),
         
-        # NEW: Recommendation Details Modal
+        # Recommendation Details Modal
         uiOutput("rec_details_modal"),
         
         # Achievement Modal
         uiOutput("achievement_modal"),
         
-        # NEW: User Menu
+        # User Menu
         uiOutput("user_menu")
       )
     }
   })
-  
-  # NEW: Render user menu
+
   output$user_menu <- renderUI({
     if (!rv$authenticated || !rv$show_user_menu) return(NULL)
     
@@ -2176,13 +2231,12 @@ server <- function(input, output, session) {
              )
     )
   })
-  
-  # Render landing page
+
   render_landing_page <- function() {
     tagList(
-      # Hero Section
+
       tags$div(class = "hero",
-               # Animated logo container
+               
                tags$div(class = "logo-animation-container",
                         tags$div(class = "logo-flip-container",
                                  tags$div(class = "logo-front",
@@ -2235,7 +2289,7 @@ server <- function(input, output, session) {
                                                       width = "100%")
                                    ),
                                    
-                                   # Password field with eye icon
+                                   # Password field
                                    tags$div(class = "form-group full-width",
                                             tags$label(class = "form-label", "Password ", 
                                                        tags$span(class = "required", "*")),
@@ -2249,7 +2303,7 @@ server <- function(input, output, session) {
                                             )
                                    ),
                                    
-                                   # Login button - UPDATED: Changed onclick to directly call login_submit
+                                   # Login button
                                    tags$button(class = "btn-primary", 
                                                id = "login_submit_btn",  # Added ID
                                                onclick = "Shiny.setInputValue('login_submit', Math.random());",
@@ -2262,7 +2316,7 @@ server <- function(input, output, session) {
   }
   
   # ==============================================================================
-  # ACHIEVEMENT NOTIFICATION TRACKING HELPERS
+  # ACHIEVEMENT NOTIFICATION
   # ==============================================================================
   
   # Helper function to check if notification was already shown
@@ -2302,14 +2356,13 @@ server <- function(input, output, session) {
   }
   
   # ==============================================================================
-  # ACHIEVEMENT CHECKING FUNCTION - MODIFIED FOR MODAL
+  # ACHIEVEMENT CHECKING FUNCTION
   # ==============================================================================
   
   check_achievements <- function() {
     items <- get_all_items()
     if (nrow(items) == 0) return()
     
-    # Store which achievements were unlocked in this check
     newly_unlocked <- list()
     
     # 1. First Watch
@@ -2708,10 +2761,9 @@ server <- function(input, output, session) {
         rv$badge_progress$plotwist_special <- TRUE
       }
     }
-    
-    # If any achievements were newly unlocked, trigger the modal
+
     if (length(newly_unlocked) > 0) {
-      # Store the first newly unlocked achievement for the modal
+
       achievement_id <- names(newly_unlocked)[1]
       rv$achievement_to_show <- list(
         id = achievement_id,
@@ -2731,8 +2783,7 @@ server <- function(input, output, session) {
       check_achievements()
     }
   })
-  
-  # Rest of the server code (existing functionality)
+
   observeEvent(input$nav_home, { 
     rv$page <- "home" 
     updateNavButtons("home")
@@ -2767,15 +2818,15 @@ server <- function(input, output, session) {
     rv$current_tmdb_id <- NULL
     rv$is_fetching_season <- FALSE
     rv$calculated_total_episodes_watched <- 0
-    rv$modal_source <- "manual"  # Reset modal source
+    rv$modal_source <- "manual" 
   })
   
   observeEvent(input$close_details_modal, { 
     rv$show_details_modal <- FALSE 
     rv$selected_item <- NULL
+    rv$collection_data <- NULL
   })
-  
-  # NEW: Handle recommendation details click
+
   observeEvent(input$show_rec_details, {
     if (!is.null(input$show_rec_details) && input$show_rec_details != "") {
       tryCatch({
@@ -2783,12 +2834,10 @@ server <- function(input, output, session) {
         tmdb_id <- as.numeric(data$tmdb_id)
         media_type <- data$media_type
         title <- data$title
-        
-        # Set loading state
+
         rv$rec_details_loading <- TRUE
         rv$show_rec_details_modal <- TRUE
-        
-        # Set modal source to recommendations
+
         rv$modal_source <- "recommendations"
         
         # Fetch details from TMDB
@@ -2817,7 +2866,7 @@ server <- function(input, output, session) {
     rv$rec_details_loading <- FALSE
   })
   
-  # NEW: Handle edit button click
+  # Handle edit button click
   observeEvent(input$edit_item, {
     if (!is.null(input$edit_item) && input$edit_item != "") {
       item_id <- as.numeric(input$edit_item)
@@ -2854,7 +2903,7 @@ server <- function(input, output, session) {
     rv$edit_calculated_total_episodes_watched <- 0
   })
   
-  # NEW: Handle delete button click
+  # Handle delete button click
   observeEvent(input$delete_item, {
     if (!is.null(input$delete_item) && input$delete_item != "") {
       item_id <- as.numeric(input$delete_item)
@@ -2941,11 +2990,22 @@ server <- function(input, output, session) {
           if (nrow(item) == 1) {
             cat("Item title:", item$title[1], "\n")
             cat("Watch status:", item$watch_status[1], "\n")
-            cat("Date watched:", item$date_watched[1], "\n")
-            cat("Date watched class:", class(item$date_watched[1]), "\n")
             
             rv$selected_item <- item[1, ]
             rv$show_details_modal <- TRUE
+            
+            # Fetch collection data if TMDB ID exists
+            if (!is.na(item$tmdb_id[1]) && !is.null(item$tmdb_id[1])) {
+              cat("Fetching collection for TMDB ID:", item$tmdb_id[1], "\n")
+              rv$collection_data <- get_tmdb_collection(item$tmdb_id[1], item$media_type[1])
+              if (!is.null(rv$collection_data)) {
+                cat("Collection found:", rv$collection_data$collection_name, "\n")
+              } else {
+                cat("No collection found\n")
+              }
+            } else {
+              rv$collection_data <- NULL
+            }
             
             cat("Details modal should now be visible\n")
           } else {
@@ -2963,12 +3023,61 @@ server <- function(input, output, session) {
     cat("=== END DEBUG ===\n")
   })
   
-  # Update navigation button active state
+  # Handle collection item click
+  observeEvent(input$show_collection_item, {
+    if (!is.null(input$show_collection_item) && input$show_collection_item != "") {
+      tryCatch({
+        data <- fromJSON(input$show_collection_item)
+        tmdb_id <- as.numeric(data$tmdb_id)
+        media_type <- data$media_type
+        title <- data$title
+        
+        # Check if this item already exists in the library
+        con <- get_db_connection()
+        if (!is.null(con)) {
+          query <- sprintf("SELECT id FROM movies_series WHERE tmdb_id = %d", tmdb_id)
+          existing <- dbGetQuery(con, query)
+          dbDisconnect(con)
+          
+          if (nrow(existing) > 0) {
+            # Item exists, show its details
+            isolate({
+              input$show_item_details <- existing$id[1]
+            })
+            Sys.sleep(0.1)
+            session$sendCustomMessage(type = "eval", 
+                                      message = sprintf("Shiny.setInputValue('show_item_details', %d, {priority: 'event'});", 
+                                                        existing$id[1]))
+          } else {
+            # Item doesn't exist, show recommendation details to add it
+            rv$rec_details_loading <- TRUE
+            rv$show_rec_details_modal <- TRUE
+            rv$show_details_modal <- FALSE
+            rv$modal_source <- "collection"
+            
+            # Fetch details from TMDB
+            details <- get_tmdb_details(tmdb_id, media_type)
+            
+            if (!is.null(details)) {
+              rv$rec_details <- details
+              rv$rec_details_loading <- FALSE
+            } else {
+              showNotification("Failed to fetch details from TMDB.", type = "error", duration = 3)
+              rv$show_rec_details_modal <- FALSE
+              rv$rec_details_loading <- FALSE
+            }
+          }
+        }
+      }, error = function(e) {
+        showNotification(paste("Error:", e$message), type = "error", duration = 3)
+      })
+    }
+  })
+
   updateNavButtons <- function(active_page) {
     session$sendCustomMessage(type = "updateNavButtons", message = list(active = active_page))
   }
-  
-  # Initialize home as active
+
   observe({
     updateNavButtons(rv$page)
   })
@@ -2981,8 +3090,7 @@ server <- function(input, output, session) {
     dbDisconnect(con)
     return(data)
   })
-  
-  # MODIFIED: Get all existing titles and TMDB IDs for filtering recommendations
+
   get_existing_titles_and_ids <- reactive({
     items <- get_all_items()
     if (nrow(items) == 0) {
@@ -3251,10 +3359,6 @@ server <- function(input, output, session) {
     return(NULL)
   })
   
-  # ==============================================================================
-  # TMDB SEARCH OBSERVER - FIXED VERSION (For Add Modal)
-  # ==============================================================================
-  
   observeEvent(input$tmdb_search, {
     query <- input$tmdb_search
     
@@ -3282,14 +3386,13 @@ server <- function(input, output, session) {
     
     rv$tmdb_results <- results
     rv$tmdb_loading <- FALSE
-    
-    # Build suggestions HTML
+
     if (!is.null(results) && length(results) > 0) {
       cat("Building HTML for", length(results), "results\n")
       suggestions_html <- ""
       for (i in seq_along(results)) {
         result <- results[[i]]
-        # Escape single quotes and special characters
+
         safe_title <- gsub("'", "\\\\'", result$title)
         safe_title <- gsub('"', '\\\\"', safe_title)
         
@@ -3310,19 +3413,14 @@ server <- function(input, output, session) {
       cat("No results found\n")
       suggestions_html <- '<div class="suggestion-empty">No results found in TMDB. Try a different search term.</div>'
     }
-    
-    # Send suggestions to client
-    cat("Sending suggestions to client...\n")
+
+    cat("Sending suggestions...\n")
     session$sendCustomMessage(
       type = "tmdb_suggestions",
       message = list(html = suggestions_html, type = "add")
     )
     cat("Message sent!\n")
   })
-  
-  # ==============================================================================
-  # TMDB SEARCH OBSERVER - EDIT MODAL VERSION
-  # ==============================================================================
   
   observeEvent(input$edit_tmdb_search, {
     query <- input$edit_tmdb_search
@@ -3348,8 +3446,7 @@ server <- function(input, output, session) {
     cat("Results received:", length(results), "items\n")
     
     rv$edit_tmdb_results <- results
-    
-    # Build suggestions HTML
+
     if (!is.null(results) && length(results) > 0) {
       cat("Building HTML for edit modal", length(results), "results\n")
       suggestions_html <- ""
@@ -3378,7 +3475,7 @@ server <- function(input, output, session) {
     }
     
     # Send suggestions to client
-    cat("Sending edit modal suggestions to client...\n")
+    cat("Sending edit modal suggestions...\n")
     session$sendCustomMessage(
       type = "tmdb_suggestions",
       message = list(html = suggestions_html, type = "edit")
@@ -3446,14 +3543,13 @@ server <- function(input, output, session) {
               if (!is.null(season_details) && season_details$episodes_count > 0) {
                 updateNumericInput(session, "modal_episodes_current_season", value = season_details$episodes_count)
               } else {
-                updateNumericInput(session, "modal_episodes_current_season", value = 10) # Default fallback
+                updateNumericInput(session, "modal_episodes_current_season", value = 10) 
               }
             } else {
-              updateNumericInput(session, "modal_episodes_current_season", value = 10) # Default fallback
+              updateNumericInput(session, "modal_episodes_current_season", value = 10)
             }
           }
-          
-          # Update JavaScript functions
+
           session$sendCustomMessage(
             type = "eval",
             message = "setTimeout(function() { 
@@ -3544,10 +3640,10 @@ server <- function(input, output, session) {
               if (!is.null(season_details) && season_details$episodes_count > 0) {
                 updateNumericInput(session, "edit_modal_episodes_current_season", value = season_details$episodes_count)
               } else {
-                updateNumericInput(session, "edit_modal_episodes_current_season", value = 10) # Default fallback
+                updateNumericInput(session, "edit_modal_episodes_current_season", value = 10)
               }
             } else {
-              updateNumericInput(session, "edit_modal_episodes_current_season", value = 10) # Default fallback
+              updateNumericInput(session, "edit_modal_episodes_current_season", value = 10)
             }
           }
           
@@ -3582,20 +3678,17 @@ server <- function(input, output, session) {
     }
   })
   
-  # Handle manual input for current season - FIXED: Prevents modal from closing and allows manual typing (Add Modal)
+  # Handle manual input for current season
   observeEvent(input$modal_current_season, {
-    # Check if value is valid and different from stored value
+
     if (!is.null(input$modal_current_season)) {
       new_value <- as.numeric(input$modal_current_season)
       old_value <- rv$tv_current_season
-      
-      # Only process if value has actually changed
+
       if (is.na(new_value) || new_value == old_value) return()
-      
-      # Update the stored value
+
       rv$tv_current_season <- new_value
-      
-      # Update episode indicator via JavaScript
+
       session$sendCustomMessage(
         type = "eval",
         message = "setTimeout(function() { 
@@ -3607,18 +3700,15 @@ server <- function(input, output, session) {
           }
         }, 100);"
       )
-      
-      # Only fetch from TMDB if we have an ID and it's a TV Series
+
       if (!is.null(rv$current_tmdb_id) && 
           !is.null(input$modal_media_type) && 
           input$modal_media_type == "TV Series" &&
           new_value > 0 &&
           !rv$is_fetching_season) {
-        
-        # Prevent multiple rapid API calls
+
         rv$is_fetching_season <- TRUE
-        
-        # Use a delay to prevent too many API calls during typing
+
         delay(500, {
           tryCatch({
             # Fetch season details from TMDB
@@ -3659,18 +3749,15 @@ server <- function(input, output, session) {
   
   # Handle manual input for current season (Edit Modal)
   observeEvent(input$edit_modal_current_season, {
-    # Check if value is valid and different from stored value
+
     if (!is.null(input$edit_modal_current_season)) {
       new_value <- as.numeric(input$edit_modal_current_season)
       old_value <- rv$edit_tv_current_season
-      
-      # Only process if value has actually changed
+
       if (is.na(new_value) || new_value == old_value) return()
-      
-      # Update the stored value
+
       rv$edit_tv_current_season <- new_value
-      
-      # Update episode indicator via JavaScript
+
       session$sendCustomMessage(
         type = "eval",
         message = "setTimeout(function() { 
@@ -3682,15 +3769,13 @@ server <- function(input, output, session) {
           }
         }, 100);"
       )
-      
-      # Only fetch from TMDB if we have an ID and it's a TV Series
+
       if (!is.null(rv$edit_current_tmdb_id) && 
           !is.null(input$edit_modal_media_type) && 
           input$edit_modal_media_type == "TV Series" &&
           new_value > 0 &&
           !rv$edit_is_fetching_season) {
-        
-        # Prevent multiple rapid API calls
+
         rv$edit_is_fetching_season <- TRUE
         
         # Use a delay to prevent too many API calls during typing
@@ -3763,8 +3848,7 @@ server <- function(input, output, session) {
     if (!is.null(input$edit_modal_current_episode)) {
       new_value <- as.numeric(input$edit_modal_current_episode)
       old_value <- rv$edit_tv_current_episode
-      
-      # Only process if value has actually changed
+
       if (is.na(new_value) || new_value == old_value) return()
       
       rv$edit_tv_current_episode <- new_value
@@ -3970,7 +4054,7 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # Watch Status and Genre on same row
+                               # Watch Status and Genre
                                tags$div(class = "form-row",
                                         tags$div(class = "form-group half",
                                                  tags$label(class = "form-label", "Watch Status ", tags$span(class = "required", "*")),
@@ -3990,7 +4074,7 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # Year and Director/Creator on same row
+                               # Year and Director/Creator
                                tags$div(class = "form-row",
                                         tags$div(class = "form-group half",
                                                  tags$label(class = "form-label", "Year"),
@@ -4003,7 +4087,7 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # Duration fields for Movies (same row, conditional)
+                               # Duration fields for Movies (conditional)
                                tags$div(class = "form-row duration-field", style = "display: none;",
                                         tags$div(class = "form-group half",
                                                  tags$label(class = "form-label", "Movie Duration (minutes) ", tags$span(class = "required", "*")),
@@ -4021,7 +4105,7 @@ server <- function(input, output, session) {
                                
                                # TV Series tracking fields (conditional)
                                tags$div(class = "tv-series-fields", style = "display: none;",
-                                        # Total Seasons and Current Season on same row
+                                        # Total Seasons and Current Season
                                         tags$div(class = "tv-series-row",
                                                  tags$div(class = "form-group half",
                                                           tags$label(class = "form-label", "Total Seasons ", tags$span(class = "required", "*")),
@@ -4037,7 +4121,7 @@ server <- function(input, output, session) {
                                                  )
                                         ),
                                         
-                                        # Episodes in Current Season and Current Episode on same row
+                                        # Episodes in Current Season and Current Episode
                                         tags$div(class = "tv-series-row",
                                                  tags$div(class = "form-group half",
                                                           tags$label(class = "form-label", "Episodes in Current Season ", tags$span(class = "required", "*")),
@@ -4053,7 +4137,7 @@ server <- function(input, output, session) {
                                                  )
                                         ),
                                         
-                                        # Episode indicator (new addition) - UPDATED with clean styling
+                                        # Episode indicator
                                         tags$div(class = "form-row",
                                                  tags$div(class = "form-group full-width",
                                                           tags$div(id = "episode-indicator", 
@@ -4063,7 +4147,7 @@ server <- function(input, output, session) {
                                                  )
                                         ),
                                         
-                                        # Total Episodes and Total Episodes Watched on same row
+                                        # Total Episodes and Total Episodes Watched
                                         tags$div(class = "tv-series-row",
                                                  tags$div(class = "form-group half",
                                                           tags$label(class = "form-label", "Total Episodes ", tags$span(class = "required", "*")),
@@ -4080,7 +4164,7 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # Cast (whole row)
+                               # Cast
                                tags$div(class = "form-group full-width",
                                         tags$label(class = "form-label", "Cast"),
                                         textAreaInput("modal_cast", NULL, 
@@ -4089,7 +4173,7 @@ server <- function(input, output, session) {
                                                       width = "100%")
                                ),
                                
-                               # Plot Summary (whole row)
+                               # Plot Summary
                                tags$div(class = "form-group full-width",
                                         tags$label(class = "form-label", "Plot Summary"),
                                         textAreaInput("modal_plot_summary", NULL, 
@@ -4098,7 +4182,7 @@ server <- function(input, output, session) {
                                                       width = "100%")
                                ),
                                
-                               # Poster URL (whole row)
+                               # Poster URL
                                tags$div(class = "form-group full-width",
                                         tags$label(class = "form-label", "Poster URL"),
                                         textInput("modal_poster", NULL, 
@@ -4106,7 +4190,7 @@ server <- function(input, output, session) {
                                                   width = "100%")
                                ),
                                
-                               # Your Rating (whole row) - CONDITIONAL: Only visible when Watch Status is "Watched"
+                               # Your Rating CONDITIONAL: Only visible when Watch Status is "Watched"
                                tags$div(class = "form-group full-width rating-field", style = "display: none;",
                                         tags$label(class = "form-label", "Your Rating"),
                                         tags$div(class = "star-rating-input",
@@ -4118,7 +4202,7 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # Review/Notes (whole row) - CONDITIONAL: Only visible when Watch Status is "Watched"
+                               # Review/Notes CONDITIONAL: Only visible when Watch Status is "Watched"
                                tags$div(class = "form-group full-width review-field", style = "display: none;",
                                         tags$label(class = "form-label", "Review / Notes"),
                                         textAreaInput("modal_review", NULL, 
@@ -4134,7 +4218,7 @@ server <- function(input, output, session) {
     )
   })
   
-  # Edit Modal - UPDATED: Same UI as add modal but with edit-specific IDs
+  # Edit Modal
   output$edit_modal <- renderUI({
     if (!rv$show_edit_modal || is.null(rv$editing_item)) return(NULL)
     
@@ -4175,7 +4259,7 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # Watch Status and Genre on same row
+                               # Watch Status and Genre
                                tags$div(class = "form-row",
                                         tags$div(class = "form-group half",
                                                  tags$label(class = "form-label", "Watch Status ", tags$span(class = "required", "*")),
@@ -4199,7 +4283,7 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # Year and Director/Creator on same row
+                               # Year and Director/Creator
                                tags$div(class = "form-row",
                                         tags$div(class = "form-group half",
                                                  tags$label(class = "form-label", "Year"),
@@ -4214,7 +4298,7 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # Duration fields for Movies (same row, conditional)
+                               # Duration fields for Movies
                                tags$div(class = "form-row duration-field", style = if(item$media_type == "Movie") "display: flex;" else "display: none;",
                                         tags$div(class = "form-group half",
                                                  tags$label(class = "form-label", "Movie Duration (minutes) ", tags$span(class = "required", "*")),
@@ -4232,9 +4316,9 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # TV Series tracking fields (conditional)
+                               # TV Series tracking fields
                                tags$div(class = "tv-series-fields", style = if(item$media_type == "TV Series") "display: block;" else "display: none;",
-                                        # Total Seasons and Current Season on same row
+                                        # Total Seasons and Current Season
                                         tags$div(class = "tv-series-row",
                                                  tags$div(class = "form-group half",
                                                           tags$label(class = "form-label", "Total Seasons ", tags$span(class = "required", "*")),
@@ -4252,7 +4336,7 @@ server <- function(input, output, session) {
                                                  )
                                         ),
                                         
-                                        # Episodes in Current Season and Current Episode on same row
+                                        # Episodes in Current Season and Current Episode
                                         tags$div(class = "tv-series-row",
                                                  tags$div(class = "form-group half",
                                                           tags$label(class = "form-label", "Episodes in Current Season ", tags$span(class = "required", "*")),
@@ -4270,7 +4354,7 @@ server <- function(input, output, session) {
                                                  )
                                         ),
                                         
-                                        # Episode indicator (new addition) - UPDATED with clean styling
+                                        # Episode indicator
                                         tags$div(class = "form-row",
                                                  tags$div(class = "form-group full-width",
                                                           tags$div(id = "edit_episode-indicator", 
@@ -4280,7 +4364,7 @@ server <- function(input, output, session) {
                                                  )
                                         ),
                                         
-                                        # Total Episodes and Total Episodes Watched on same row
+                                        # Total Episodes and Total Episodes Watched
                                         tags$div(class = "tv-series-row",
                                                  tags$div(class = "form-group half",
                                                           tags$label(class = "form-label", "Total Episodes ", tags$span(class = "required", "*")),
@@ -4299,7 +4383,7 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # Cast (whole row)
+                               # Cast
                                tags$div(class = "form-group full-width",
                                         tags$label(class = "form-label", "Cast"),
                                         textAreaInput("edit_modal_cast", NULL, 
@@ -4309,7 +4393,7 @@ server <- function(input, output, session) {
                                                       width = "100%")
                                ),
                                
-                               # Plot Summary (whole row)
+                               # Plot Summary
                                tags$div(class = "form-group full-width",
                                         tags$label(class = "form-label", "Plot Summary"),
                                         textAreaInput("edit_modal_plot_summary", NULL, 
@@ -4319,7 +4403,7 @@ server <- function(input, output, session) {
                                                       width = "100%")
                                ),
                                
-                               # Poster URL (whole row)
+                               # Poster URL
                                tags$div(class = "form-group full-width",
                                         tags$label(class = "form-label", "Poster URL"),
                                         textInput("edit_modal_poster", NULL, 
@@ -4328,7 +4412,7 @@ server <- function(input, output, session) {
                                                   width = "100%")
                                ),
                                
-                               # Your Rating (whole row) - CONDITIONAL: Only visible when Watch Status is "Watched"
+                               # Your Rating CONDITIONAL: Only visible when Watch Status is "Watched"
                                tags$div(class = "form-group full-width rating-field", 
                                         style = if(item$watch_status == "Watched") "display: block;" else "display: none;",
                                         tags$label(class = "form-label", "Your Rating"),
@@ -4341,7 +4425,7 @@ server <- function(input, output, session) {
                                         )
                                ),
                                
-                               # Review/Notes (whole row) - CONDITIONAL: Only visible when Watch Status is "Watched"
+                               # Review/Notes CONDITIONAL: Only visible when Watch Status is "Watched"
                                tags$div(class = "form-group full-width review-field", 
                                         style = if(item$watch_status == "Watched") "display: block;" else "display: none;",
                                         tags$label(class = "form-label", "Review / Notes"),
@@ -4359,7 +4443,7 @@ server <- function(input, output, session) {
     )
   })
   
-  # Delete Confirmation Modal - NEW
+  # Delete Confirmation Modal
   output$delete_modal <- renderUI({
     if (!rv$show_delete_modal || is.null(rv$deleting_item)) return(NULL)
     
@@ -4417,7 +4501,7 @@ server <- function(input, output, session) {
     )
   })
   
-  # Details Modal - UPDATED: Added delete button on the same row as the status badge
+  # Details Modal
   output$details_modal <- renderUI({
     if (!rv$show_details_modal || is.null(rv$selected_item)) return(NULL)
     
@@ -4453,7 +4537,7 @@ server <- function(input, output, session) {
       progress_color <- "#9BA3B0"
     }
     
-    # Format date added - FIXED for PostgreSQL
+    # Format date added
     date_added <- tryCatch({
       if (!is.na(item$date_added) && !is.null(item$date_added)) {
         format(as.Date(item$date_added), "%B %d, %Y")
@@ -4464,15 +4548,25 @@ server <- function(input, output, session) {
       "Unknown"
     })
     
-    # Format date watched if available - FIXED for PostgreSQL
+    # Format date watched
     date_watched <- tryCatch({
-      if (!is.na(item$date_watched) && !is.null(item$date_watched) && item$date_watched != "") {
-        format(as.Date(item$date_watched), "%B %d, %Y")
+      if (item$watch_status == "Watched") {
+        watch_date <- get_watch_date(item$id)
+        
+        if (!is.null(watch_date) && !is.na(watch_date)) {
+          format(as.Date(watch_date), "%B %d, %Y")
+        } else {
+          if (!is.na(item$date_watched) && item$date_watched != "") {
+            format(as.Date(item$date_watched), "%B %d, %Y")
+          } else {
+            "Unknown date"
+          }
+        }
       } else {
         "Not watched yet"
       }
     }, error = function(e) {
-      "Not watched yet"
+      "Unknown date"
     })
     
     # Rating stars
@@ -4490,7 +4584,7 @@ server <- function(input, output, session) {
                                )
                       ),
                       tags$div(class = "modal-body",
-                               # Poster and basic info in two columns
+                               # Poster and basic info
                                tags$div(class = "details-row",
                                         tags$div(class = "details-poster",
                                                  tags$img(src = if (!is.na(item$poster_url) && item$poster_url != "") 
@@ -4499,7 +4593,7 @@ server <- function(input, output, session) {
                                                    alt = item$title)
                                         ),
                                         tags$div(class = "details-info",
-                                                 # Status badge, edit button, and delete button on same row - UPDATED
+                                                 # Status badge, edit button, and delete button
                                                  tags$div(class = "details-status-row",
                                                           tags$div(class = paste("details-badge", 
                                                                                  switch(item$watch_status,
@@ -4536,7 +4630,7 @@ server <- function(input, output, session) {
                                                    )
                                                  },
                                                  
-                                                 # Cast (truncated)
+                                                 # Cast
                                                  if (!is.na(item$cast) && item$cast != "") {
                                                    tags$div(class = "details-field",
                                                             tags$span(class = "field-label", "Cast:"),
@@ -4547,7 +4641,7 @@ server <- function(input, output, session) {
                                                    )
                                                  },
                                                  
-                                                 # Dates and Rating - NEW: Combined section
+                                                 # Dates and Rating
                                                  tags$div(class = "details-field",
                                                           tags$span(class = "field-label", "Date Added:"),
                                                           tags$span(class = "field-value", date_added)
@@ -4560,7 +4654,7 @@ server <- function(input, output, session) {
                                                    )
                                                  },
                                                  
-                                                 # NEW: Plot summary as a details-field (similar to date display)
+                                                 # Plot summary 
                                                  if (!is.na(item$plot_summary) && item$plot_summary != "") {
                                                    tags$div(class = "details-field",
                                                             tags$span(class = "field-label", "Plot Summary:"),
@@ -4569,7 +4663,7 @@ server <- function(input, output, session) {
                                                  },
                                                  
                                                  if (progress > 0) {
-                                                   # Progress as a details-field style - label and value on same row
+                                                   # Progress 
                                                    tags$div(class = "details-field progress-field",
                                                             tags$span(class = "field-label", "Progress:"),
                                                             tags$span(class = "field-value progress-value",
@@ -4587,7 +4681,7 @@ server <- function(input, output, session) {
                                tags$div(style = "border-bottom: 1px solid rgba(255, 255, 255, 0.15); margin: 1.5rem 0; width: 100%;"),
                                
                                # ==============================================================================
-                               # Rating display - ALIGNED LEFT
+                               # Rating display
                                # ==============================================================================
                                
                                if (rating_value > 0) {
@@ -4616,7 +4710,7 @@ server <- function(input, output, session) {
                                },
                                
                                # ==============================================================================
-                               # TV Series and Movie details at the bottom
+                               # TV Series and Movie details
                                # ==============================================================================
                                
                                # TV Series specific details
@@ -4692,13 +4786,103 @@ server <- function(input, output, session) {
                                                    )
                                           )
                                  )
+                               },
+                               
+                               # ==============================================================================
+                               # COLLECTION SECTION
+                               # ==============================================================================
+                               
+                               if (!is.null(rv$collection_data) && length(rv$collection_data$items) > 0) {
+                                 tagList(
+                                   tags$div(class = "details-section", style = "margin-top: 2rem;",
+                                            tags$h3(class = "section-title", 
+                                                    tags$i(class = "fas fa-film", style = "margin-right: 0.5rem; color: #00A8E8;"),
+                                                    rv$collection_data$collection_name),
+
+                                            tags$div(class = "collection-scroll-container",
+                                                     style = "display: flex; gap: 1.5rem; overflow-x: auto; padding: 1.5rem 0; margin-top: 1rem;",
+                                                     lapply(rv$collection_data$items, function(col_item) {
+                                                       # Calculate if item exists in library
+                                                       con <- get_db_connection()
+                                                       item_exists <- FALSE
+                                                       if (!is.null(con)) {
+                                                         tryCatch({
+                                                           check_query <- sprintf("SELECT id, watch_status FROM movies_series WHERE tmdb_id = %d", col_item$tmdb_id)
+                                                           existing <- dbGetQuery(con, check_query)
+                                                           dbDisconnect(con)
+                                                           if (nrow(existing) > 0) {
+                                                             item_exists <- TRUE
+                                                             watch_status <- existing$watch_status[1]
+                                                             status_class <- switch(watch_status,
+                                                                                    "Watched" = "badge-watched",
+                                                                                    "Watching" = "badge-watching",
+                                                                                    "Unwatched" = "badge-unwatched")
+                                                           }
+                                                         }, error = function(e) {
+                                                           if (!is.null(con)) dbDisconnect(con)
+                                                         })
+                                                       }
+                                                       
+                                                       tags$div(class = "movie-card collection-movie-card",
+                                                                style = "min-width: 200px; flex-shrink: 0; cursor: pointer;",
+                                                                `data-tmdb-id` = col_item$tmdb_id,
+                                                                onclick = sprintf("
+                                                                  Shiny.setInputValue('show_collection_item', JSON.stringify({
+                                                                    tmdb_id: %d,
+                                                                    media_type: '%s',
+                                                                    title: '%s'
+                                                                  }), {priority: 'event'});
+                                                                ", 
+                                                                                  col_item$tmdb_id,
+                                                                                  item$media_type,
+                                                                                  gsub("'", "\\\\'", col_item$title)),
+                                                                
+                                                                tags$img(class = "movie-poster", 
+                                                                         src = col_item$poster,
+                                                                         onerror = "this.src='https://via.placeholder.com/200x300/1A1F29/00A8E8?text=No+Poster';"),
+                                                                
+                                                                if (item_exists) {
+                                                                  tags$div(class = paste("movie-badge", status_class), 
+                                                                           toupper(watch_status))
+                                                                } else {
+                                                                  tags$div(class = "movie-badge badge-info",
+                                                                           title = "Recommended for you",
+                                                                           tags$img(src = "info.png", 
+                                                                                    alt = "Recommended",
+                                                                                    style = "width: 16px; height: 16px; filter: invert(60%) sepia(100%) saturate(500%) hue-rotate(180deg);"))
+                                                                },
+                                                                
+                                                                tags$div(class = "movie-info",
+                                                                         tags$h3(class = "movie-title", col_item$title),
+                                                                         tags$div(class = "movie-meta",
+                                                                                  if (!is.na(col_item$year) && col_item$year != "N/A") {
+                                                                                    tags$span(col_item$year)
+                                                                                  },
+                                                                                  if (!is.na(col_item$year) && col_item$year != "N/A") {
+                                                                                    tags$span("•")
+                                                                                  },
+                                                                                  tags$span(item$media_type)
+                                                                         ),
+                                                                         # TMDB Rating
+                                                                         if (col_item$rating > 0) {
+                                                                           tags$div(class = "movie-rating",
+                                                                                    tags$span("⭐"),
+                                                                                    tags$span(col_item$rating)
+                                                                           )
+                                                                         }
+                                                                )
+                                                       )
+                                                     })
+                                            )
+                                   )
+                                 )
                                }
                       )
              )
     )
   })
   
-  # NEW: Recommendation Details Modal
+  # Recommendation Details Modal
   output$rec_details_modal <- renderUI({
     if (!rv$show_rec_details_modal || is.null(rv$rec_details)) return(NULL)
     
@@ -4736,7 +4920,7 @@ server <- function(input, output, session) {
                                )
                       ),
                       tags$div(class = "modal-body",
-                               # Poster and basic info in two columns
+                               # Poster and basic info
                                tags$div(class = "details-row",
                                         tags$div(class = "details-poster",
                                                  tags$img(src = if (!is.null(details$poster_url) && details$poster_url != "") 
@@ -4843,7 +5027,7 @@ server <- function(input, output, session) {
                                )
                       ),
                       
-                      # MODAL FOOTER - Sticky, always visible, not part of scrollable area
+                      # MODAL FOOTER 
                       tags$div(class = "modal-footer",
                                tags$div(class = "modal-footer-content",
                                         tags$button(class = "btn-primary rec-add-btn",
@@ -4899,11 +5083,10 @@ server <- function(input, output, session) {
     
     achievement <- rv$achievement_to_show$details
     achievement_id <- rv$achievement_to_show$id
-    
-    # Enhanced JavaScript for sparkle and particle effects
+
     sparkle_js <- "
   setTimeout(function() {
-    // Create enhanced particle system
+
     const badgeContainer = document.querySelector('.achievement-badge-container');
     if (badgeContainer) {
       const colors = ['#FFD700', '#00A8E8', '#06D6A0', '#EF476F', '#FFB800'];
@@ -4911,20 +5094,16 @@ server <- function(input, output, session) {
       for (let i = 0; i < 25; i++) {
         const particle = document.createElement('div');
         particle.className = 'particle';
-        
-        // Random size between 3-8px
+
         const size = Math.random() * 5 + 3;
         particle.style.width = size + 'px';
         particle.style.height = size + 'px';
-        
-        // Random position
+
         particle.style.left = Math.random() * 100 + '%';
         particle.style.top = Math.random() * 100 + '%';
-        
-        // Random color
+
         particle.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-        
-        // Random animation
+
         const duration = 2 + Math.random() * 3;
         const delay = Math.random() * 2;
         particle.style.animation = `particleFloatEnhanced ${duration}s ease-in-out ${delay}s infinite`;
@@ -4933,8 +5112,7 @@ server <- function(input, output, session) {
         
         badgeContainer.appendChild(particle);
       }
-      
-      // Add enhanced particle animation CSS
+
       const style = document.createElement('style');
       style.textContent = `
         @keyframes particleFloatEnhanced {
@@ -4958,13 +5136,11 @@ server <- function(input, output, session) {
       `;
       document.head.appendChild(style);
     }
-    
-    // Add subtle sound effect for modal opening
+
     try {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const now = audioContext.currentTime;
-      
-      // Create bell-like sound
+
       const oscillator = audioContext.createOscillator();
       const gainNode = audioContext.createGain();
       
@@ -4984,16 +5160,14 @@ server <- function(input, output, session) {
       oscillator.stop(now + 1.5);
       
     } catch (e) {
-      // Audio not supported or user blocked it
+
       console.log('Audio not available');
     }
-    
-    // Add slight shake animation to the modal
+
     const modal = document.querySelector('.achievement-modal');
     if (modal) {
       modal.style.animation = 'modalSlideUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, modalShake 0.5s ease 0.6s';
-      
-      // Add shake animation
+
       const shakeStyle = document.createElement('style');
       shakeStyle.textContent = `
         @keyframes modalShake {
@@ -5007,8 +5181,7 @@ server <- function(input, output, session) {
     
   }, 150);
   "
-    
-    # Send the enhanced JavaScript
+
     session$sendCustomMessage(type = "eval", message = sparkle_js)
     
     tags$div(class = "achievement-modal-overlay",
@@ -5029,8 +5202,7 @@ server <- function(input, output, session) {
                                         class = "achievement-badge-image",
                                         alt = paste(achievement$name, "Badge"),
                                         onerror = "this.src='https://via.placeholder.com/180/1A1F29/FFD700?text=BADGE';"),
-                               
-                               # Enhanced sparkle effects
+
                                tags$div(class = "sparkle sparkle-1"),
                                tags$div(class = "sparkle sparkle-2"),
                                tags$div(class = "sparkle sparkle-3"),
@@ -5080,9 +5252,6 @@ server <- function(input, output, session) {
   # ==============================================================================
   
   observeEvent(input$view_all_achievements, {
-    # This is triggered when the "View All Achievements" button is clicked
-    # The navigation is already handled by the onclick event
-    # We can add additional logic here if needed
     showNotification("Redirecting to Achievements...", type = "message", duration = 2)
   })
   
@@ -5184,11 +5353,10 @@ server <- function(input, output, session) {
   })
   
   # ==============================================================================
-  # FIXED: Submit Movie handler - Server-side calculation for TV Series (Add Modal)
+  # Submit Movie handler
   # ==============================================================================
   
   observeEvent(input$submit_movie, {
-    # CRITICAL: Only validate if the add modal is actually shown
     if (!rv$show_modal) {
       return()
     }
@@ -5284,19 +5452,19 @@ server <- function(input, output, session) {
         return()
       }
       
-      # FIXED: Get all values from inputs properly
+      # Get all values from inputs properly
       total_seasons <- as.numeric(input$modal_total_seasons)
       episodes_current_season <- as.numeric(input$modal_episodes_current_season)
       total_episodes <- as.numeric(input$modal_total_episodes)
       
-      # CRITICAL FIX: Handle current_season and current_episode based on status
+      # Handle current_season and current_episode based on status
       if (input$modal_status == "Unwatched") {
         current_season <- 0
         current_episode <- 0
         total_episodes_watched <- 0
         
       } else if (input$modal_status == "Watched") {
-        # FIXED: For "Watched", set current_season and current_episode to final values
+        # For "Watched", set current_season and current_episode to final values
         current_season <- total_seasons
         current_episode <- episodes_current_season
         total_episodes_watched <- total_episodes
@@ -5307,7 +5475,7 @@ server <- function(input, output, session) {
         cat("  total_episodes_watched =", total_episodes_watched, "\n")
         
       } else if (input$modal_status == "Watching") {
-        # FIXED: For "Watching", read values directly from inputs
+        # For "Watching", read values directly from inputs
         current_season <- as.numeric(input$modal_current_season)
         current_episode <- as.numeric(input$modal_current_episode)
         
@@ -5549,19 +5717,19 @@ server <- function(input, output, session) {
         return()
       }
       
-      # FIXED: Get all values from inputs properly
+      # Get all values from inputs properly
       total_seasons <- as.numeric(input$edit_modal_total_seasons)
       episodes_current_season <- as.numeric(input$edit_modal_episodes_current_season)
       total_episodes <- as.numeric(input$edit_modal_total_episodes)
       
-      # CRITICAL FIX: Handle current_season and current_episode based on status
+      # Handle current_season and current_episode based on status
       if (input$edit_modal_status == "Unwatched") {
         current_season <- 0
         current_episode <- 0
         total_episodes_watched <- 0
         
       } else if (input$edit_modal_status == "Watched") {
-        # FIXED: For "Watched", set current_season and current_episode to final values
+        # For "Watched", set current_season and current_episode to final values
         current_season <- total_seasons
         current_episode <- episodes_current_season
         total_episodes_watched <- total_episodes
@@ -5572,7 +5740,7 @@ server <- function(input, output, session) {
         cat("  total_episodes_watched =", total_episodes_watched, "\n")
         
       } else if (input$edit_modal_status == "Watching") {
-        # FIXED: For "Watching", read values directly from inputs
+        # For "Watching", read values directly from inputs
         current_season <- as.numeric(input$edit_modal_current_season)
         current_episode <- as.numeric(input$edit_modal_current_episode)
         
@@ -5737,7 +5905,7 @@ server <- function(input, output, session) {
   })
   
   # ==============================================================================
-  # CONDITIONAL FAB BUTTON - Only shows on Library tab
+  # FAB BUTTON - Only shows on Library tab
   # ==============================================================================
   
   output$fab_button <- renderUI({
@@ -5751,7 +5919,9 @@ server <- function(input, output, session) {
     }
   })
   
-  # NEW: Stats Page
+  # ==============================================================================
+  # STATS TAB
+  # ==============================================================================
   render_stats <- function() {
     items <- get_all_items()
     
@@ -5835,7 +6005,7 @@ server <- function(input, output, session) {
                         )
                ),
                
-               # Stats Grid - MOVED FROM LIBRARY
+               # Stats Grid
                tags$div(class = "stats-grid",
                         # Row 1: First 3 stats
                         tags$div(class = "stat-card",
@@ -5888,7 +6058,7 @@ server <- function(input, output, session) {
                
                
                # ==============================================================================
-               # EXISTING: RECENTLY ADDED SECTION
+               # RECENTLY ADDED SECTION
                # ==============================================================================
                tags$div(class = "section-header", style = "margin-top: 2.5rem;",
                         tags$h2(class = "section-title", "Recently Added"),
@@ -5921,8 +6091,7 @@ server <- function(input, output, session) {
       )
     )
   }
-  
-  # UPDATED: Home Page Rendering Function with NEW Featured Section
+
   render_home <- function() {
     items <- get_all_items()
     
@@ -5933,7 +6102,7 @@ server <- function(input, output, session) {
     
     tagList(
       # ==============================================================================
-      # NEW: FEATURED SECTION WITH LAYERED CAROUSEL
+      # FEATURED SECTION
       # ==============================================================================
       tags$div(class = "featured-section",
                style = sprintf("background-image: linear-gradient(to right, rgba(26, 31, 41, 0.95) 0%%, rgba(26, 31, 41, 0.85) 50%%, rgba(26, 31, 41, 0.3) 100%%), url('%s');", 
@@ -5987,10 +6156,6 @@ server <- function(input, output, session) {
     )
   }
   
-  # ==============================================================================
-  # MODERN PAGINATION COMPONENT - ENHANCED (Bottom only)
-  # ==============================================================================
-  
   render_pagination <- function(current_page, total_pages, prefix) {
     # Calculate which page numbers to show
     max_visible_pages <- 7
@@ -5998,15 +6163,11 @@ server <- function(input, output, session) {
     if (total_pages <= max_visible_pages) {
       page_numbers <- 1:total_pages
     } else {
-      # Smart pagination: always show first, last, and pages around current
       if (current_page <= 4) {
-        # Near start: show 1-5, ..., last
         page_numbers <- c(1:5, NA, total_pages)
       } else if (current_page >= total_pages - 3) {
-        # Near end: show 1, ..., last-4 to last
         page_numbers <- c(1, NA, (total_pages-4):total_pages)
       } else {
-        # Middle: show 1, ..., current-1, current, current+1, ..., last
         page_numbers <- c(1, NA, (current_page-1):(current_page+1), NA, total_pages)
       }
     }
@@ -6051,14 +6212,14 @@ server <- function(input, output, session) {
     )
   }
   
-  # Library with Tabs, Search, Sort, Filter, and Single Bottom Pagination - UPDATED (Stats grid removed)
+  # Library with Tabs, Search, Sort, Filter, and Single Bottom Pagination
   render_library <- function() {
     items <- get_library_items()
     
     # Check for empty state
     empty_msg <- get_empty_state_message()
     
-    # Calculate stats for the grid (removed from here, now in Stats tab)
+    # Calculate stats for the grid 
     total_items <- nrow(items)
     
     if (nrow(items) == 0) {
@@ -6080,10 +6241,10 @@ server <- function(input, output, session) {
                           )
                  ),
                  
-                 # Search, Sort, and Filter Controls - REORDERED: Search first
+                 # Search, Sort, and Filter Controls
                  tags$div(class = "controls-container",
                           tags$div(class = "controls-wrapper",
-                                   # Search bar FIRST
+                                   # Search bar
                                    tags$div(class = "search-container",
                                             tags$div(class = "search-input-wrapper",
                                                      tags$input(type = "text", 
@@ -6098,7 +6259,7 @@ server <- function(input, output, session) {
                                             )
                                    ),
                                    
-                                   # Sort and Filter buttons after search
+                                   # Sort and Filter buttons
                                    tags$div(class = "sort-filter-container",
                                             # Sort
                                             tags$div(class = "sort-container",
@@ -6664,7 +6825,7 @@ server <- function(input, output, session) {
                         )
                ),
                
-               # Movies Grid - UPDATED: Added 5-column inline style and clickable cards
+               # Movies Grid
                tags$div(class = "movies-grid", style = "grid-template-columns: repeat(5, 1fr) !important;",
                         lapply(1:nrow(current_page_items), function(i) render_movie_card(current_page_items[i, ]))
                ),
@@ -6677,7 +6838,7 @@ server <- function(input, output, session) {
     )
   }
   
-  # Recommendations Page with Tabs and Single Bottom Pagination - UPDATED
+  # Recommendations Page with Tabs and Single Bottom Pagination
   render_recommendations_page <- function() {
     items <- get_all_items()
     
@@ -6766,7 +6927,7 @@ server <- function(input, output, session) {
       ))
     }
     
-    # MODIFIED: Get existing titles and TMDB IDs to exclude
+    # Get existing titles and TMDB IDs to exclude
     existing_data <- get_existing_titles_and_ids()
     exclude_titles <- existing_data$titles
     exclude_tmdb_ids <- existing_data$tmdb_ids
@@ -6786,8 +6947,7 @@ server <- function(input, output, session) {
                         else "You've already added all recommended TV series to your library! Try watching more series with different genres.")
       ))
     }
-    
-    # Show only first 25 items for this page
+
     end_idx <- min(25, nrow(recommendations))
     
     tagList(
@@ -6804,7 +6964,7 @@ server <- function(input, output, session) {
                              " recommendations based on your most watched genres (excluding items already in your library):"))
       ),
       
-      # Recommendations Grid - UPDATED: Added 5-column inline style and clickable cards
+      # Recommendations Grid
       tags$div(class = "movies-grid", style = "grid-template-columns: repeat(5, 1fr) !important;",
                lapply(1:end_idx, function(i) {
                  rec <- recommendations[i, ]
@@ -6840,7 +7000,7 @@ server <- function(input, output, session) {
     )
   }
   
-  # Achievements Page - ENLARGED 5-COLUMN DESIGN
+  # Achievements Page
   render_achievements <- function() {
     tagList(
       tags$div(class = "achievements-page",
@@ -6848,7 +7008,7 @@ server <- function(input, output, session) {
                         tags$h2(class = "section-title", "Hall of Fame")
                ),
                
-               # Stats Overview - Centered
+               # Stats Overview
                tags$div(class = "achievement-stats",
                         tags$div(class = "achievement-stat-card",
                                  tags$div(class = "stat-number", length(rv$achievements_unlocked)),
@@ -6861,7 +7021,7 @@ server <- function(input, output, session) {
                         )
                ),
                
-               # Badges Grid - 5 Columns, No Background
+               # Badges Grid
                tags$div(class = "badges-grid-five-col-clean",
                         # Badge 1: First Watch
                         tags$div(class = paste("badge-card-clean", if("first_watch" %in% rv$achievements_unlocked) "unlocked" else "locked"),
@@ -7099,7 +7259,7 @@ server <- function(input, output, session) {
                                  }
                         ),
                         
-                        # Badge 20: THE PLOTWIST BADGE (MYSTERY/SECRET)
+                        # Badge 20: THE PLOTWIST BADGE (SECRET)
                         tags$div(class = paste("badge-card-clean plotwist-ultimate", if("plotwist_badge" %in% rv$achievements_unlocked) "unlocked" else "locked"),
                                  `data-badge-id` = "plotwist_badge",
                                  tags$div(class = "badge-icon-large",
@@ -7111,7 +7271,7 @@ server <- function(input, output, session) {
                                  if("plotwist_badge" %in% rv$achievements_unlocked) {
                                    tags$p(class = "badge-description-large", "Rate 'Plotwist' as a movie/TV series (4+ stars)")
                                  } else {
-                                   tags$p(class = "badge-description-large", "???")  # Mystery description when locked
+                                   tags$p(class = "badge-description-large", "???")
                                  }
                         )
                )
@@ -7147,8 +7307,7 @@ server <- function(input, output, session) {
     rv$rec_page <- 1  # Reset to page 1 when switching tabs
     rv$rec_series_clicked <- rv$rec_series_clicked + 1
   })
-  
-  # Stats tab navigation handlers - NEW
+
   observeEvent(input$stats_all_btn, { 
     rv$stats_media_type <- "all"
   })
@@ -7164,8 +7323,7 @@ server <- function(input, output, session) {
   # ==============================================================================
   # SEARCH, SORT, AND FILTER HANDLERS
   # ==============================================================================
-  
-  # Search handler with debouncing
+
   observeEvent(input$search_trigger, {
     # Update the search query
     rv$search_query <- input$search_input
@@ -7365,7 +7523,7 @@ server <- function(input, output, session) {
     rv$library_page <- 1
   })
   
-  # NEW: Handle View All button click to redirect to library
+  # Handle View All button click to redirect to library
   observeEvent(input$view_all_clicked, {
     rv$page <- "library"
     updateNavButtons("library")
@@ -7420,8 +7578,7 @@ server <- function(input, output, session) {
       rv$library_page <- input$library_go_to_page
     }
   })
-  
-  # Render Movie Card (Updated with progress display for movies and TV Series and clickable)
+
   render_movie_card <- function(item) {
     status_class <- switch(item$watch_status,
                            "Watched" = "badge-watched",
@@ -7435,8 +7592,7 @@ server <- function(input, output, session) {
     }
     
     progress_html <- NULL
-    
-    # For TV Series - FIXED progress calculation with NULL handling
+
     if (item$media_type == "TV Series" && !is.na(item$total_episodes) && !is.null(item$total_episodes) && item$total_episodes > 0) {
       total_episodes_watched <- ifelse(is.na(item$total_episodes_watched) || is.null(item$total_episodes_watched) || item$total_episodes_watched < 0, 
                                        0, item$total_episodes_watched)
@@ -7467,7 +7623,7 @@ server <- function(input, output, session) {
                                 )
       )
     }
-    # For Movies - Show duration progress with NULL handling
+
     else if (item$media_type == "Movie" && !is.na(item$total_duration) && !is.null(item$total_duration) && item$total_duration > 0) {
       watched_duration <- ifelse(is.na(item$watched_duration) || is.null(item$watched_duration) || item$watched_duration < 0, 
                                  0, item$watched_duration)
@@ -7532,8 +7688,7 @@ server <- function(input, output, session) {
              )
     )
   }
-  
-  # NEW: Handle hero button click to redirect to recommendations
+
   observeEvent(input$hero_button_click, {
     rv$page <- "recommendations"
     updateNavButtons("recommendations")
