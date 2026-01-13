@@ -2990,20 +2990,40 @@ server <- function(input, output, session) {
           if (nrow(item) == 1) {
             cat("Item title:", item$title[1], "\n")
             cat("Watch status:", item$watch_status[1], "\n")
+            cat("TMDB ID:", item$tmdb_id[1], "\n")
+            cat("Media type:", item$media_type[1], "\n")
             
             rv$selected_item <- item[1, ]
             rv$show_details_modal <- TRUE
             
-            # Fetch collection data if TMDB ID exists
-            if (!is.na(item$tmdb_id[1]) && !is.null(item$tmdb_id[1])) {
+            # ALWAYS fetch collection data when modal opens (regardless of watch status)
+            # Reset collection data first to clear any previous data
+            rv$collection_data <- NULL
+            
+            # Fetch collection data if TMDB ID exists and is valid
+            if (!is.na(item$tmdb_id[1]) && !is.null(item$tmdb_id[1]) && 
+                item$tmdb_id[1] != "" && item$tmdb_id[1] > 0) {
               cat("Fetching collection for TMDB ID:", item$tmdb_id[1], "\n")
-              rv$collection_data <- get_tmdb_collection(item$tmdb_id[1], item$media_type[1])
-              if (!is.null(rv$collection_data)) {
-                cat("Collection found:", rv$collection_data$collection_name, "\n")
-              } else {
-                cat("No collection found\n")
-              }
+              
+              # Use tryCatch to handle any TMDB API errors gracefully
+              tryCatch({
+                collection_data <- get_tmdb_collection(item$tmdb_id[1], item$media_type[1])
+                
+                if (!is.null(collection_data) && !is.null(collection_data$items) && 
+                    length(collection_data$items) > 0) {
+                  rv$collection_data <- collection_data
+                  cat("Collection found:", collection_data$collection_name, "\n")
+                  cat("Number of items:", length(collection_data$items), "\n")
+                } else {
+                  cat("No collection found or collection is empty\n")
+                  rv$collection_data <- NULL
+                }
+              }, error = function(e) {
+                cat("Error fetching collection from TMDB:", e$message, "\n")
+                rv$collection_data <- NULL
+              })
             } else {
+              cat("No valid TMDB ID, skipping collection fetch\n")
               rv$collection_data <- NULL
             }
             
@@ -3071,6 +3091,37 @@ server <- function(input, output, session) {
       }, error = function(e) {
         showNotification(paste("Error:", e$message), type = "error", duration = 3)
       })
+    }
+  })
+  
+  observeEvent(rv$refresh, {
+    # Only fetch if details modal is open and we have a selected item
+    if (rv$show_details_modal && !is.null(rv$selected_item)) {
+      cat("=== REFRESH TRIGGERED, RE-FETCHING COLLECTION ===\n")
+      
+      item <- rv$selected_item
+      
+      # Fetch collection data if TMDB ID exists
+      if (!is.na(item$tmdb_id) && !is.null(item$tmdb_id) && 
+          item$tmdb_id != "" && item$tmdb_id > 0) {
+        cat("Re-fetching collection for TMDB ID:", item$tmdb_id, "\n")
+        
+        tryCatch({
+          collection_data <- get_tmdb_collection(item$tmdb_id, item$media_type)
+          
+          if (!is.null(collection_data) && !is.null(collection_data$items) && 
+              length(collection_data$items) > 0) {
+            rv$collection_data <- collection_data
+            cat("Collection re-fetched:", collection_data$collection_name, "\n")
+          } else {
+            cat("No collection found on re-fetch\n")
+            rv$collection_data <- NULL
+          }
+        }, error = function(e) {
+          cat("Error re-fetching collection:", e$message, "\n")
+          rv$collection_data <- NULL
+        })
+      }
     }
   })
 
@@ -4789,22 +4840,39 @@ server <- function(input, output, session) {
                                },
                                
                                # ==============================================================================
-                               # COLLECTION SECTION
+                               # COLLECTION SECTION - ALWAYS SHOW IF AVAILABLE
                                # ==============================================================================
                                
-                               if (!is.null(rv$collection_data) && length(rv$collection_data$items) > 0) {
+                               # Check if collection data exists and has items
+                               if (!is.null(rv$collection_data) && 
+                                   !is.null(rv$collection_data$items) && 
+                                   length(rv$collection_data$items) > 0) {
+                                 
+                                 # Get collection name or use default
+                                 collection_name <- if (!is.null(rv$collection_data$collection_name) && 
+                                                        rv$collection_data$collection_name != "") {
+                                   rv$collection_data$collection_name
+                                 } else {
+                                   if (rv$selected_item$media_type == "Movie") {
+                                     "Related Movies"
+                                   } else {
+                                     "Similar TV Series"
+                                   }
+                                 }
+                                 
                                  tagList(
                                    tags$div(class = "details-section", style = "margin-top: 2rem;",
                                             tags$h3(class = "section-title", 
                                                     tags$i(class = "fas fa-film", style = "margin-right: 0.5rem; color: #00A8E8;"),
-                                                    rv$collection_data$collection_name),
-
+                                                    collection_name),
+                                            
                                             tags$div(class = "collection-scroll-container",
                                                      style = "display: flex; gap: 1.5rem; overflow-x: auto; padding: 1.5rem 0; margin-top: 1rem;",
                                                      lapply(rv$collection_data$items, function(col_item) {
                                                        # Calculate if item exists in library
                                                        con <- get_db_connection()
                                                        item_exists <- FALSE
+                                                       watch_status <- NULL
                                                        if (!is.null(con)) {
                                                          tryCatch({
                                                            check_query <- sprintf("SELECT id, watch_status FROM movies_series WHERE tmdb_id = %d", col_item$tmdb_id)
@@ -4827,18 +4895,20 @@ server <- function(input, output, session) {
                                                                 style = "min-width: 200px; flex-shrink: 0; cursor: pointer;",
                                                                 `data-tmdb-id` = col_item$tmdb_id,
                                                                 onclick = sprintf("
-                                                                  Shiny.setInputValue('show_collection_item', JSON.stringify({
-                                                                    tmdb_id: %d,
-                                                                    media_type: '%s',
-                                                                    title: '%s'
-                                                                  }), {priority: 'event'});
-                                                                ", 
+                                   Shiny.setInputValue('show_collection_item', JSON.stringify({
+                                     tmdb_id: %d,
+                                     media_type: '%s',
+                                     title: '%s'
+                                   }), {priority: 'event'});
+                                 ", 
                                                                                   col_item$tmdb_id,
-                                                                                  item$media_type,
+                                                                                  rv$selected_item$media_type,
                                                                                   gsub("'", "\\\\'", col_item$title)),
                                                                 
                                                                 tags$img(class = "movie-poster", 
-                                                                         src = col_item$poster,
+                                                                         src = if (!is.null(col_item$poster) && col_item$poster != "") 
+                                                                           col_item$poster 
+                                                                         else "https://via.placeholder.com/200x300/1A1F29/00A8E8?text=No+Poster",
                                                                          onerror = "this.src='https://via.placeholder.com/200x300/1A1F29/00A8E8?text=No+Poster';"),
                                                                 
                                                                 if (item_exists) {
@@ -4853,18 +4923,19 @@ server <- function(input, output, session) {
                                                                 },
                                                                 
                                                                 tags$div(class = "movie-info",
-                                                                         tags$h3(class = "movie-title", col_item$title),
+                                                                         tags$h3(class = "movie-title", 
+                                                                                 if (!is.null(col_item$title)) col_item$title else "Unknown Title"),
                                                                          tags$div(class = "movie-meta",
-                                                                                  if (!is.na(col_item$year) && col_item$year != "N/A") {
+                                                                                  if (!is.null(col_item$year) && col_item$year != "N/A") {
                                                                                     tags$span(col_item$year)
                                                                                   },
-                                                                                  if (!is.na(col_item$year) && col_item$year != "N/A") {
+                                                                                  if (!is.null(col_item$year) && col_item$year != "N/A") {
                                                                                     tags$span("•")
                                                                                   },
-                                                                                  tags$span(item$media_type)
+                                                                                  tags$span(rv$selected_item$media_type)
                                                                          ),
                                                                          # TMDB Rating
-                                                                         if (col_item$rating > 0) {
+                                                                         if (!is.null(col_item$rating) && col_item$rating > 0) {
                                                                            tags$div(class = "movie-rating",
                                                                                     tags$span("⭐"),
                                                                                     tags$span(col_item$rating)
@@ -4875,6 +4946,17 @@ server <- function(input, output, session) {
                                                      })
                                             )
                                    )
+                                 )
+                               } else if (!is.null(rv$selected_item) && 
+                                          !is.na(rv$selected_item$tmdb_id) && 
+                                          rv$selected_item$tmdb_id > 0) {
+                                 # Show a message if we have a TMDB ID but no collection data
+                                 tags$div(class = "details-section", style = "margin-top: 2rem;",
+                                          tags$h3(class = "section-title", 
+                                                  tags$i(class = "fas fa-film", style = "margin-right: 0.5rem; color: #00A8E8;"),
+                                                  "Collection"),
+                                          tags$p(style = "color: #9BA3B0; font-style: italic; text-align: center; padding: 1rem;",
+                                                 "No collection or similar items found for this title.")
                                  )
                                }
                       )
