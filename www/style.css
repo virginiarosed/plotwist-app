@@ -5708,6 +5708,26 @@ margin: 0.2rem 0 0.5rem !important;
   margin: 0 auto;
 }
 
+.achievements-page .section-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.achievements-page .section-title {
+  text-align: center;
+  width: 100%;
+  margin: 0 auto;
+  font-size: 3.5rem;
+  font-weight: 900;
+  background-clip: text;
+  position: relative;
+  padding-bottom: 0.5rem;
+}
+
 .section-subtitle {
   color: #9BA3B0;
   font-size: 1.1rem;
